@@ -15,15 +15,29 @@ class AIService:
         self.api_type = self.api_config.get('api_type', 'gemini')
 
     def load_api_config(self):
-        """加載 API 配置"""
+        """加載 API 配置 - 優先從環境變數讀取"""
         config_path = os.path.join('config', 'api_config.json')
+        config = {}
+        
+        # 先從 JSON 文件讀取
         if os.path.exists(config_path):
             try:
                 with open(config_path, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+                    config = json.load(f)
             except:
-                return {}
-        return {}
+                config = {}
+        
+        # 環境變數優先級更高，會覆蓋 JSON 文件中的配置
+        if os.environ.get('GEMINI_API_KEY'):
+            config['gemini_api_key'] = os.environ.get('GEMINI_API_KEY')
+        if os.environ.get('OPENAI_API_KEY'):
+            config['openai_api_key'] = os.environ.get('OPENAI_API_KEY')
+        if os.environ.get('API_TYPE'):
+            config['api_type'] = os.environ.get('API_TYPE')
+        if os.environ.get('OPENAI_MODEL'):
+            config['openai_model'] = os.environ.get('OPENAI_MODEL')
+        
+        return config
 
     def save_api_config(self, config):
         """保存 API 配置"""

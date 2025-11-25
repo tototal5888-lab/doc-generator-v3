@@ -1,9 +1,14 @@
 import os
+from dotenv import load_dotenv
+
+# 載入 .env 文件
+load_dotenv()
 
 class Config:
     # 基本配置
     BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-key-12345'
+    ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD') or 'sunon'  # API 設定密碼
     UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
     TEMPLATE_STORAGE_FOLDER = os.path.join(BASE_DIR, 'templates_storage')
     OUTPUT_FOLDER = os.path.join(BASE_DIR, 'output')

@@ -5,6 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI文檔生成器 V3.0 - 專業版</title>
+
+    <!-- Favicon and App Icons -->
+    <link rel="icon" type="image/png" href="/static/icon.png">
+    <link rel="apple-touch-icon" href="/static/icon.png">
+    <link rel="shortcut icon" type="image/png" href="/static/icon.png">
+
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
@@ -52,6 +58,20 @@
             font-weight: 700;
             margin-bottom: 10px;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .header-icon {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+            background: white;
+            border-radius: 12px;
+            padding: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
         .header .version {
@@ -544,7 +564,10 @@
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1>🤖 AI文檔生成器</h1>
+            <h1>
+                <img src="/static/icon.png" alt="AI文檔生成器" class="header-icon">
+                AI文檔生成器
+            </h1>
             <div class="version">V3.0 專業版 | 多格式輸出</div>
         </div>
 
@@ -761,6 +784,35 @@
                         <h2 class="card-title">API設定</h2>
                     </div>
 
+                    <!-- 密碼保護遮罩 -->
+                    <div id="config-lock-overlay" style="position: relative;">
+                        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; 
+                                    background: rgba(255, 255, 255, 0.95); 
+                                    backdrop-filter: blur(10px);
+                                    display: flex; 
+                                    flex-direction: column;
+                                    align-items: center; 
+                                    justify-content: center; 
+                                    z-index: 10;
+                                    border-radius: 12px;
+                                    padding: 40px;">
+                            <div style="font-size: 4rem; margin-bottom: 20px;">🔒</div>
+                            <h3 style="margin-bottom: 10px; color: var(--dark);">此功能需要密碼</h3>
+                            <p style="color: #64748b; margin-bottom: 25px;">請輸入管理員密碼以修改 API 設定</p>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <input type="password" id="config-password-input" class="form-control"
+                                    placeholder="請輸入密碼" style="width: 250px;"
+                                    onkeypress="if(event.key === 'Enter') unlockConfig()">
+                                <button class="btn btn-primary" onclick="unlockConfig()">
+                                    🔓 解鎖
+                                </button>
+                            </div>
+                            <div id="password-error" style="color: var(--danger); margin-top: 15px; display: none;">
+                                ❌ 密碼錯誤，請重試
+                            </div>
+                        </div>
+                    </div>
+
                     <div id="config-alert" class="alert"></div>
 
                     <div class="form-group">
@@ -768,7 +820,7 @@
                             <span class="form-label-icon">🤖</span>
                             AI引擎選擇
                         </label>
-                        <select id="api-type" class="form-control">
+                        <select id="api-type" class="form-control" disabled>
                             <option value="gemini">Google Gemini 2.0</option>
                             <option value="openai">OpenAI GPT-4</option>
                             <option value="mock">模擬環境 (免費)</option>
@@ -781,7 +833,8 @@
                                 <span class="form-label-icon">🔑</span>
                                 Gemini API Key
                             </label>
-                            <input type="password" id="gemini-key" class="form-control" placeholder="輸入您的Gemini API密鑰">
+                            <input type="password" id="gemini-key" class="form-control" placeholder="輸入您的Gemini API密鑰"
+                                disabled>
                         </div>
 
                         <div class="form-group">
@@ -789,7 +842,8 @@
                                 <span class="form-label-icon">🔑</span>
                                 OpenAI API Key
                             </label>
-                            <input type="password" id="openai-key" class="form-control" placeholder="輸入您的OpenAI API密鑰">
+                            <input type="password" id="openai-key" class="form-control" placeholder="輸入您的OpenAI API密鑰"
+                                disabled>
                         </div>
                     </div>
 
@@ -798,7 +852,7 @@
                             <span class="form-label-icon">🎯</span>
                             OpenAI 模型
                         </label>
-                        <select id="openai-model" class="form-control">
+                        <select id="openai-model" class="form-control" disabled>
                             <option value="gpt-4o">GPT-4o</option>
                             <option value="gpt-4o-mini" selected>GPT-4o Mini (推薦)</option>
                             <option value="gpt-4">GPT-4</option>
@@ -807,7 +861,7 @@
                         </select>
                     </div>
 
-                    <button class="btn btn-primary" onclick="saveConfig()">
+                    <button id="save-config-btn" class="btn btn-primary" onclick="saveConfig()" disabled>
                         💾 保存設定
                     </button>
                 </div>
@@ -830,6 +884,55 @@
             if (tabName === 'documents') loadGeneratedDocuments();
             if (tabName === 'config') loadConfig();
             if (tabName === 'generate') loadTemplateOptions();
+        }
+
+        // 解鎖 API 設定
+        async function unlockConfig() {
+            const password = document.getElementById('config-password-input').value;
+
+            if (!password) {
+                document.getElementById('password-error').style.display = 'block';
+                document.getElementById('password-error').textContent = '❌ 請輸入密碼';
+                return;
+            }
+
+            try {
+                // 調用後端 API 驗證密碼
+                const response = await fetch(`${API_BASE_URL}/verify-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: password })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // 隱藏遮罩層
+                    document.getElementById('config-lock-overlay').style.display = 'none';
+
+                    // 啟用所有表單控件
+                    document.getElementById('api-type').disabled = false;
+                    document.getElementById('gemini-key').disabled = false;
+                    document.getElementById('openai-key').disabled = false;
+                    document.getElementById('openai-model').disabled = false;
+                    document.getElementById('save-config-btn').disabled = false;
+
+                    // 清空密碼輸入框
+                    document.getElementById('config-password-input').value = '';
+                    document.getElementById('password-error').style.display = 'none';
+
+                    showAlert('config-alert', 'success', '✅ 已解鎖 API 設定');
+                } else {
+                    // 顯示錯誤訊息
+                    document.getElementById('password-error').style.display = 'block';
+                    document.getElementById('password-error').textContent = '❌ 密碼錯誤，請重試';
+                    document.getElementById('config-password-input').value = '';
+                    document.getElementById('config-password-input').focus();
+                }
+            } catch (error) {
+                document.getElementById('password-error').style.display = 'block';
+                document.getElementById('password-error').textContent = '❌ 驗證失敗: ' + error.message;
+            }
         }
 
         // 載入配置

@@ -30,6 +30,24 @@ def api_config():
     else:
         return jsonify(ai_service.load_api_config())
 
+@bp.route('/api/verify-password', methods=['POST'])
+def verify_password():
+    """驗證管理員密碼"""
+    try:
+        data = request.json
+        password = data.get('password', '')
+        
+        # 從配置中獲取正確的密碼
+        correct_password = current_app.config.get('ADMIN_PASSWORD', 'sunon')
+        
+        if password == correct_password:
+            return jsonify({"success": True, "message": "密碼正確"})
+        else:
+            return jsonify({"success": False, "message": "密碼錯誤"}), 401
+            
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @bp.route('/api/upload-template', methods=['POST'])
 def upload_template():
     if 'file' not in request.files:
