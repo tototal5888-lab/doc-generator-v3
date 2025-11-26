@@ -295,6 +295,22 @@
             border-color: var(--primary);
         }
 
+        /* AI 優化按鈕特殊樣式 */
+        #optimize-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        #optimize-btn:active {
+            transform: translateY(0);
+        }
+
+        #optimize-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
         .btn-success {
             background: var(--success);
             color: white;
@@ -734,7 +750,39 @@
                                 <span id="requirements-label">需求描述</span>
                             </label>
                             <textarea id="requirements" class="form-control"
-                                placeholder="請描述您的具體需求...&#10;&#10;提示：如選擇「SOP優化」，請在此貼上舊的 SOP 內容"></textarea>
+                                placeholder="請描述您的具體需求...&#10;&#10;提示：如選擇「SOP優化」，請在此貼上舊的 SOP 內容"
+                                rows="5"></textarea>
+
+                            <!-- AI 優化按鈕 -->
+                            <div style="margin-top: 10px; text-align: right;">
+                                <button type="button" id="optimize-btn" style="padding: 8px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
+                                    <span id="optimize-btn-text">✨ AI 優化需求</span>
+                                    <span id="optimize-btn-loading" style="display: none;">⏳ 優化中...</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- AI 優化結果區域 (預設隱藏) -->
+                        <div class="form-group" id="optimized-section" style="display: none;">
+                            <label class="form-label">
+                                <span class="form-label-icon">✨</span>
+                                <span>AI 優化後的需求 (可編輯)</span>
+                            </label>
+                            <textarea id="optimized-requirements" class="form-control"
+                                placeholder="優化後的需求描述將顯示在這裡..."
+                                rows="8"></textarea>
+
+                            <div style="margin-top: 10px; display: flex; gap: 10px;">
+                                <button type="button" id="use-optimized-btn" class="btn-primary" style="padding: 8px 20px;">
+                                    ✅ 使用優化後的需求
+                                </button>
+                                <button type="button" id="cancel-optimized-btn" class="btn-secondary" style="padding: 8px 20px;">
+                                    ❌ 取消
+                                </button>
+                                <button type="button" id="revert-original-btn" class="btn-secondary" style="padding: 8px 20px;">
+                                    ↩️ 恢復原始需求
+                                </button>
+                            </div>
                         </div>
 
                         <div class="form-group">
@@ -1235,6 +1283,99 @@
             }, false);
         });
 
+        // ==================== AI 優化需求功能 ====================
+        let originalRequirements = ''; // 儲存原始需求
+
+        // 優化需求按鈕事件
+        document.getElementById('optimize-btn').addEventListener('click', async function() {
+            const requirementsInput = document.getElementById('requirements');
+            const requirements = requirementsInput.value.trim();
+            const docType = document.getElementById('doc-type').value;
+
+            if (!requirements) {
+                alert('⚠️ 請先輸入需求描述');
+                return;
+            }
+
+            if (!docType) {
+                alert('⚠️ 請先選擇文檔類型');
+                return;
+            }
+
+            // 儲存原始需求
+            originalRequirements = requirements;
+
+            // 顯示載入狀態
+            const btn = document.getElementById('optimize-btn');
+            const btnText = document.getElementById('optimize-btn-text');
+            const btnLoading = document.getElementById('optimize-btn-loading');
+
+            btn.disabled = true;
+            btnText.style.display = 'none';
+            btnLoading.style.display = 'inline';
+
+            try {
+                const response = await fetch('/api/optimize-requirements', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        requirements: requirements,
+                        doc_type: docType
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // 顯示優化結果區域
+                    document.getElementById('optimized-section').style.display = 'block';
+                    document.getElementById('optimized-requirements').value = data.optimized_requirements;
+
+                    // 平滑滾動到優化結果
+                    document.getElementById('optimized-section').scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'nearest'
+                    });
+                } else {
+                    alert('❌ 優化失敗：' + (data.error || '未知錯誤'));
+                }
+            } catch (error) {
+                console.error('優化需求失敗:', error);
+                alert('❌ 優化失敗：' + error.message);
+            } finally {
+                // 恢復按鈕狀態
+                btn.disabled = false;
+                btnText.style.display = 'inline';
+                btnLoading.style.display = 'none';
+            }
+        });
+
+        // 使用優化後的需求
+        document.getElementById('use-optimized-btn').addEventListener('click', function() {
+            const optimizedText = document.getElementById('optimized-requirements').value;
+            document.getElementById('requirements').value = optimizedText;
+            document.getElementById('optimized-section').style.display = 'none';
+            alert('✅ 已使用優化後的需求');
+        });
+
+        // 取消優化
+        document.getElementById('cancel-optimized-btn').addEventListener('click', function() {
+            document.getElementById('optimized-section').style.display = 'none';
+            document.getElementById('optimized-requirements').value = '';
+        });
+
+        // 恢復原始需求
+        document.getElementById('revert-original-btn').addEventListener('click', function() {
+            if (originalRequirements) {
+                document.getElementById('requirements').value = originalRequirements;
+                document.getElementById('optimized-requirements').value = originalRequirements;
+                alert('✅ 已恢復原始需求');
+            }
+        });
+
+        // ==================== 生成文檔 ====================
         // 生成文檔
         async function generateDocument() {
             const docType = document.getElementById('doc-type').value;

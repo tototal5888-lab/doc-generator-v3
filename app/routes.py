@@ -127,6 +127,108 @@ def delete_template(filename):
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+@bp.route('/api/optimize-requirements', methods=['POST'])
+def optimize_requirements():
+    """使用 AI 優化需求描述"""
+    try:
+        data = request.json
+        requirements = data.get('requirements', '').strip()
+        doc_type = data.get('doc_type', 'system_doc')
+
+        if not requirements:
+            return jsonify({"success": False, "error": "需求描述不能為空"}), 400
+
+        # 獲取 AI 服務
+        ai_service = get_ai_service()
+
+        # 根據文檔類型構建優化提示詞
+        if doc_type == 'sop':
+            # SOP 專用的優化提示詞
+            optimize_prompt = f"""你現在是一位企業內部系統的 SOP 工程師，熟悉採購/廠商報價/審核流程。
+輸出語言：繁體中文。
+
+請依照我提供的功能模組，產生標準 SOP 文件。
+
+規則：
+1. SOP 請保持明確、實務、不要誇大或補造不存在的功能。
+2. 每段 SOP 都需包含以下章節：
+   (A) 作業目的
+   (B) 使用角色
+   (C) 系統流程圖（文字描述即可）
+   (D) 作業流程步驟（逐步條列）
+   (E) 異常處理 / 錯誤訊息處理
+   (F) 注意事項
+3. 若流程中涉及 UI 操作，請加入畫面邏輯（例如：點選「新增報價」、輸入欄位、按下儲存）。
+4. 內容需保持一致性、準確描述流程，不可幻想不存在的系統功能。
+5. 使用 Markdown 格式輸出。
+
+原始需求：
+{requirements}
+
+請依照上述規則，產生標準 SOP 文件："""
+
+        elif doc_type == 'system_doc':
+            # 系統文檔的優化提示詞
+            optimize_prompt = f"""請優化以下系統文檔的需求描述，使其更加清晰、完整、專業。
+
+原始需求：
+{requirements}
+
+請提供優化後的需求描述，要求：
+1. 補充系統架構資訊（前端、後端、資料庫）
+2. 明確功能模組劃分
+3. 列出技術棧需求
+4. 包含部署和維護說明
+5. 使用專業術語，結構清晰
+6. 使用 Markdown 格式輸出
+
+優化後的需求描述："""
+
+        elif doc_type == 'technical_report':
+            # 技術報告的優化提示詞
+            optimize_prompt = f"""請優化以下技術報告的需求描述，使其更加清晰、完整、專業。
+
+原始需求：
+{requirements}
+
+請提供優化後的需求描述，要求：
+1. 補充背景資訊和問題陳述
+2. 列出技術方案和分析方法
+3. 包含數據分析和實施細節
+4. 提供結論和建議
+5. 使用專業術語，結構清晰
+6. 使用 Markdown 格式輸出
+
+優化後的需求描述："""
+
+        else:
+            # 預設的優化提示詞
+            optimize_prompt = f"""請優化以下需求描述，使其更加清晰、完整、專業。
+
+原始需求：
+{requirements}
+
+請提供優化後的需求描述，要求：
+1. 保持原意，補充必要的細節
+2. 使用專業術語
+3. 結構清晰，分點說明
+4. 使用 Markdown 格式輸出
+
+優化後的需求描述："""
+
+        # 調用 AI API
+        optimized_text, usage_info = ai_service.generate_content(optimize_prompt)
+
+        return jsonify({
+            "success": True,
+            "optimized_requirements": optimized_text.strip(),
+            "original_requirements": requirements
+        })
+
+    except Exception as e:
+        current_app.logger.error(f"優化需求失敗: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @bp.route('/api/generate', methods=['POST'])
 def generate_document():
     try:
