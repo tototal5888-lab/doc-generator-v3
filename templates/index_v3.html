@@ -537,6 +537,93 @@
             }
         }
 
+        /* 模態框樣式 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            animation: fadeIn 0.3s;
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 0;
+            max-width: 800px;
+            width: 90%;
+            max-height: 80vh;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: fadeInUp 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            padding: 25px 30px;
+            border-bottom: 2px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin: 0;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #64748b;
+            transition: all 0.3s;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:hover {
+            background: var(--light);
+            color: var(--danger);
+        }
+
+        .modal-body {
+            padding: 30px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .template-content {
+            background: var(--light);
+            padding: 20px;
+            border-radius: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 50vh;
+            overflow-y: auto;
+        }
+
         /* 響應式設計 */
         @media (max-width: 1200px) {
             .main-content {
@@ -583,7 +670,7 @@
                 <span>📚</span> 文檔記錄
             </button>
             <button class="tab" onclick="switchTab('config')">
-                <span>⚙️</span> API設定
+                <span>🤖</span> 模型設定
             </button>
         </div>
 
@@ -771,102 +858,95 @@
                             🗑️ 刪除選中項
                         </button>
                     </div>
-
                     <div id="document-list" class="document-list"></div>
                 </div>
             </div>
 
-            <!-- API設定 Tab -->
+
+            <!-- 模型設定 Tab -->
             <div id="config-tab" class="tab-content full-width">
                 <div class="card">
                     <div class="card-header">
-                        <span class="card-icon">⚙️</span>
-                        <h2 class="card-title">API設定</h2>
-                    </div>
-
-                    <!-- 密碼保護遮罩 -->
-                    <div id="config-lock-overlay" style="position: relative;">
-                        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; 
-                                    background: rgba(255, 255, 255, 0.95); 
-                                    backdrop-filter: blur(10px);
-                                    display: flex; 
-                                    flex-direction: column;
-                                    align-items: center; 
-                                    justify-content: center; 
-                                    z-index: 10;
-                                    border-radius: 12px;
-                                    padding: 40px;">
-                            <div style="font-size: 4rem; margin-bottom: 20px;">🔒</div>
-                            <h3 style="margin-bottom: 10px; color: var(--dark);">此功能需要密碼</h3>
-                            <p style="color: #64748b; margin-bottom: 25px;">請輸入管理員密碼以修改 API 設定</p>
-                            <div style="display: flex; gap: 10px; align-items: center;">
-                                <input type="password" id="config-password-input" class="form-control"
-                                    placeholder="請輸入密碼" style="width: 250px;"
-                                    onkeypress="if(event.key === 'Enter') unlockConfig()">
-                                <button class="btn btn-primary" onclick="unlockConfig()">
-                                    🔓 解鎖
-                                </button>
-                            </div>
-                            <div id="password-error" style="color: var(--danger); margin-top: 15px; display: none;">
-                                ❌ 密碼錯誤，請重試
-                            </div>
-                        </div>
+                        <span class="card-icon">🤖</span>
+                        <h2 class="card-title">AI 模型設定</h2>
                     </div>
 
                     <div id="config-alert" class="alert"></div>
 
+                    <div
+                        style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.05)); 
+                                padding: 20px; border-radius: 12px; margin-bottom: 25px; border-left: 4px solid var(--primary);">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
+                            <span style="font-size: 1.5rem;">ℹ️</span>
+                            <strong style="color: var(--dark);">API 密鑰管理說明</strong>
+                        </div>
+                        <p style="color: #64748b; margin: 0; line-height: 1.6;">
+                            API 密鑰現在由 <code
+                                style="background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px;">.env</code>
+                            文件統一管理。
+                            請在伺服器端的 <code
+                                style="background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px;">.env</code>
+                            文件中配置
+                            <code
+                                style="background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px;">GEMINI_API_KEY</code>
+                            和
+                            <code
+                                style="background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px;">OPENAI_API_KEY</code>。
+                        </p>
+                    </div>
+
                     <div class="form-group">
                         <label class="form-label">
                             <span class="form-label-icon">🤖</span>
-                            AI引擎選擇
+                            AI 引擎選擇
                         </label>
-                        <select id="api-type" class="form-control" disabled>
-                            <option value="gemini">Google Gemini 2.0</option>
-                            <option value="openai">OpenAI GPT-4</option>
-                            <option value="mock">模擬環境 (免費)</option>
+                        <select id="api-type" class="form-control" onchange="updateModelOptions()">
+                            <option value="gemini">Google Gemini 2.0 Flash (免費額度高)</option>
+                            <option value="openai">OpenAI GPT (需付費)</option>
+                            <option value="mock">模擬環境 (測試用)</option>
                         </select>
-                    </div>
-
-                    <div class="config-grid">
-                        <div class="form-group">
-                            <label class="form-label">
-                                <span class="form-label-icon">🔑</span>
-                                Gemini API Key
-                            </label>
-                            <input type="password" id="gemini-key" class="form-control" placeholder="輸入您的Gemini API密鑰"
-                                disabled>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">
-                                <span class="form-label-icon">🔑</span>
-                                OpenAI API Key
-                            </label>
-                            <input type="password" id="openai-key" class="form-control" placeholder="輸入您的OpenAI API密鑰"
-                                disabled>
+                        <div style="margin-top: 8px; font-size: 0.9rem; color: #64748b;">
+                            <span id="api-type-hint">選擇要使用的 AI 引擎</span>
                         </div>
                     </div>
 
-                    <div class="form-group">
+                    <div class="form-group" id="openai-model-group">
                         <label class="form-label">
                             <span class="form-label-icon">🎯</span>
                             OpenAI 模型
                         </label>
-                        <select id="openai-model" class="form-control" disabled>
-                            <option value="gpt-4o">GPT-4o</option>
-                            <option value="gpt-4o-mini" selected>GPT-4o Mini (推薦)</option>
-                            <option value="gpt-4">GPT-4</option>
-                            <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                        <select id="openai-model" class="form-control">
+                            <option value="gpt-4o">GPT-4o (最新、最強)</option>
+                            <option value="gpt-4o-mini" selected>GPT-4o Mini (推薦、性價比高)</option>
+                            <option value="gpt-4-turbo">GPT-4 Turbo (強大)</option>
+                            <option value="gpt-4">GPT-4 (經典)</option>
+                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo (便宜)</option>
                         </select>
+                        <div style="margin-top: 8px; font-size: 0.9rem; color: #64748b;">
+                            <span id="model-hint">僅在選擇 OpenAI 引擎時生效</span>
+                        </div>
                     </div>
 
-                    <button id="save-config-btn" class="btn btn-primary" onclick="saveConfig()" disabled>
+                    <button id="save-config-btn" class="btn btn-primary" onclick="saveModelConfig()">
                         💾 保存設定
                     </button>
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- 模板檢視模態框 -->
+    <div id="template-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-template-name">模板內容</h3>
+                <button class="modal-close" onclick="closeTemplateModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div id="modal-template-content" class="template-content">載入中...</div>
+            </div>
+        </div>
+    </div>
     </div>
 
     <script>
@@ -886,74 +966,44 @@
             if (tabName === 'generate') loadTemplateOptions();
         }
 
-        // 解鎖 API 設定
-        async function unlockConfig() {
-            const password = document.getElementById('config-password-input').value;
-
-            if (!password) {
-                document.getElementById('password-error').style.display = 'block';
-                document.getElementById('password-error').textContent = '❌ 請輸入密碼';
-                return;
-            }
-
-            try {
-                // 調用後端 API 驗證密碼
-                const response = await fetch(`${API_BASE_URL}/verify-password`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password: password })
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    // 隱藏遮罩層
-                    document.getElementById('config-lock-overlay').style.display = 'none';
-
-                    // 啟用所有表單控件
-                    document.getElementById('api-type').disabled = false;
-                    document.getElementById('gemini-key').disabled = false;
-                    document.getElementById('openai-key').disabled = false;
-                    document.getElementById('openai-model').disabled = false;
-                    document.getElementById('save-config-btn').disabled = false;
-
-                    // 清空密碼輸入框
-                    document.getElementById('config-password-input').value = '';
-                    document.getElementById('password-error').style.display = 'none';
-
-                    showAlert('config-alert', 'success', '✅ 已解鎖 API 設定');
-                } else {
-                    // 顯示錯誤訊息
-                    document.getElementById('password-error').style.display = 'block';
-                    document.getElementById('password-error').textContent = '❌ 密碼錯誤，請重試';
-                    document.getElementById('config-password-input').value = '';
-                    document.getElementById('config-password-input').focus();
-                }
-            } catch (error) {
-                document.getElementById('password-error').style.display = 'block';
-                document.getElementById('password-error').textContent = '❌ 驗證失敗: ' + error.message;
-            }
-        }
-
-        // 載入配置
+        // 載入模型配置
         async function loadConfig() {
             try {
                 const response = await fetch(`${API_BASE_URL}/config`);
                 const config = await response.json();
 
                 document.getElementById('api-type').value = config.api_type || 'gemini';
-                document.getElementById('openai-model').value = config.openai_model || 'gpt-4';
+                document.getElementById('openai-model').value = config.openai_model || 'gpt-4o-mini';
+
+                // 根據選擇的 API 類型更新顯示
+                updateModelOptions();
             } catch (error) {
                 console.error('載入配置失敗:', error);
             }
         }
 
-        // 保存配置
-        async function saveConfig() {
+        // 更新模型選項顯示
+        function updateModelOptions() {
+            const apiType = document.getElementById('api-type').value;
+            const openaiModelGroup = document.getElementById('openai-model-group');
+            const apiTypeHint = document.getElementById('api-type-hint');
+
+            if (apiType === 'openai') {
+                openaiModelGroup.style.display = 'block';
+                apiTypeHint.textContent = '使用 OpenAI GPT 模型,需要有效的 API Key';
+            } else if (apiType === 'gemini') {
+                openaiModelGroup.style.display = 'none';
+                apiTypeHint.textContent = '使用 Google Gemini 2.0 Flash,免費額度高';
+            } else if (apiType === 'mock') {
+                openaiModelGroup.style.display = 'none';
+                apiTypeHint.textContent = '模擬模式,不調用真實 API,用於測試';
+            }
+        }
+
+        // 保存模型配置
+        async function saveModelConfig() {
             const config = {
                 api_type: document.getElementById('api-type').value,
-                gemini_api_key: document.getElementById('gemini-key').value,
-                openai_api_key: document.getElementById('openai-key').value,
                 openai_model: document.getElementById('openai-model').value
             };
 
@@ -965,7 +1015,11 @@
                 });
 
                 const result = await response.json();
-                showAlert('config-alert', 'success', '✅ 配置已保存');
+                if (result.success) {
+                    showAlert('config-alert', 'success', '✅ 模型設定已保存');
+                } else {
+                    showAlert('config-alert', 'error', '❌ 保存失敗: ' + (result.error || '未知錯誤'));
+                }
             } catch (error) {
                 showAlert('config-alert', 'error', '❌ 保存失敗: ' + error.message);
             }
@@ -1026,9 +1080,16 @@
                                     <span>📅 ${template.modified}</span>
                                 </div>
                             </div>
-                            <button class="btn btn-danger btn-sm" onclick="deleteTemplate('${template.filename}', event)">
-                                🗑️ 刪除
-                            </button>
+                            <div style="display: flex; gap: 8px;">
+                                <a href="${API_BASE_URL}/download_template/${encodeURIComponent(template.filename)}" 
+                                   class="btn btn-secondary btn-sm" 
+                                   download="${template.filename}">
+                                    📥 下載
+                                </a>
+                                <button class="btn btn-danger btn-sm" onclick="deleteTemplate('${template.filename}', event)">
+                                    🗑️ 刪除
+                                </button>
+                            </div>
                         </div>
                     `).join('');
                 }
@@ -1057,6 +1118,54 @@
                 console.error('載入模板選項失敗:', error);
             }
         }
+
+        // 檢視模板內容
+        async function viewTemplate(filename, event) {
+            event.stopPropagation();
+
+            const modal = document.getElementById('template-modal');
+            const modalTitle = document.getElementById('modal-template-name');
+            const modalContent = document.getElementById('modal-template-content');
+
+            // 顯示模態框
+            modal.classList.add('show');
+            modalTitle.textContent = `模板內容: ${filename}`;
+            modalContent.textContent = '載入中...';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/view_template/${encodeURIComponent(filename)}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    modalContent.textContent = result.content;
+                } else {
+                    modalContent.textContent = `錯誤: ${result.error}`;
+                }
+            } catch (error) {
+                modalContent.textContent = `載入失敗: ${error.message}`;
+            }
+        }
+
+        // 關閉模板檢視模態框
+        function closeTemplateModal() {
+            const modal = document.getElementById('template-modal');
+            modal.classList.remove('show');
+        }
+
+        // 點擊模態框外部關閉
+        document.addEventListener('click', function (event) {
+            const modal = document.getElementById('template-modal');
+            if (event.target === modal) {
+                closeTemplateModal();
+            }
+        });
+
+        // ESC 鍵關閉模態框
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                closeTemplateModal();
+            }
+        });
 
         // 監聽文檔類型變更，動態調整 UI
         document.addEventListener('DOMContentLoaded', function () {

@@ -958,6 +958,27 @@ def list_templates():
     return jsonify(templates)
 
 
+@app.route('/api/view_template/<filename>', methods=['GET'])
+def view_template(filename):
+    """檢視模板內容"""
+    try:
+        file_path = os.path.join(app.config['TEMPLATES_FOLDER'], filename)
+        if not os.path.exists(file_path):
+            return jsonify({"success": False, "error": "模板文件不存在"}), 404
+        
+        # 提取模板內容
+        content = FileProcessor.extract_text(file_path)
+        
+        return jsonify({
+            "success": True,
+            "filename": filename,
+            "content": content
+        })
+    except Exception as e:
+        logger.error(f"檢視模板失敗: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route('/api/document_types', methods=['GET'])
 def get_document_types():
     """獲取文檔類型列表"""

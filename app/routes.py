@@ -94,6 +94,23 @@ def list_templates():
                 })
     return jsonify(templates)
 
+
+@bp.route('/api/download_template/<filename>', methods=['GET'])
+def download_template(filename):
+    """下載模板原始檔案"""
+    try:
+        folder = current_app.config['TEMPLATE_STORAGE_FOLDER']
+        file_path = os.path.join(folder, filename)
+        
+        if not os.path.exists(file_path):
+            return jsonify({"success": False, "error": "模板文件不存在"}), 404
+        
+        return send_file(file_path, as_attachment=True, download_name=filename)
+    except Exception as e:
+        current_app.logger.error(f"下載模板失敗: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @bp.route('/api/delete_template/<filename>', methods=['DELETE'])
 def delete_template(filename):
     try:

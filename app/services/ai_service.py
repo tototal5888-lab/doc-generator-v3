@@ -188,8 +188,9 @@ class AIService:
 
     def generate_content(self, prompt):
         """生成內容的主入口"""
-        api_config = self.load_api_config()
-        api_type = api_config.get('api_type', 'gemini')
+        # 重新加載配置以確保獲取最新的設置（包括環境變數）
+        self.api_config = self.load_api_config()
+        api_type = self.api_config.get('api_type', 'gemini')
         
         if api_type == 'gemini':
             return self.call_gemini_api(prompt)
