@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh pr:*)",
+      "Bash(identify:*)",
+      "Bash(python3:*)",
+      "Bash(pip install:*)",
+      "Bash(apt list:*)",
+      "Bash(chmod:*)",
+      "Bash(cat:*)",
+      "Bash(tree:*)",
+      "Bash(venv/bin/python3:*)",
+      "Bash(venv/Scripts/python.exe:*)",
+      "Bash(./verify_optimization.sh:*)",
+      "Bash(bash:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

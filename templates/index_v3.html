@@ -750,12 +750,12 @@
                                 <span id="requirements-label">需求描述</span>
                             </label>
                             <textarea id="requirements" class="form-control"
-                                placeholder="請描述您的具體需求...&#10;&#10;提示：如選擇「SOP優化」，請在此貼上舊的 SOP 內容"
-                                rows="5"></textarea>
+                                placeholder="請描述您的具體需求...&#10;&#10;提示：如選擇「SOP優化」，請在此貼上舊的 SOP 內容" rows="5"></textarea>
 
                             <!-- AI 優化按鈕 -->
                             <div style="margin-top: 10px; text-align: right;">
-                                <button type="button" id="optimize-btn" style="padding: 8px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
+                                <button type="button" id="optimize-btn"
+                                    style="padding: 8px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
                                     <span id="optimize-btn-text">✨ AI 優化需求</span>
                                     <span id="optimize-btn-loading" style="display: none;">⏳ 優化中...</span>
                                 </button>
@@ -768,18 +768,20 @@
                                 <span class="form-label-icon">✨</span>
                                 <span>AI 優化後的需求 (可編輯)</span>
                             </label>
-                            <textarea id="optimized-requirements" class="form-control"
-                                placeholder="優化後的需求描述將顯示在這裡..."
+                            <textarea id="optimized-requirements" class="form-control" placeholder="優化後的需求描述將顯示在這裡..."
                                 rows="8"></textarea>
 
                             <div style="margin-top: 10px; display: flex; gap: 10px;">
-                                <button type="button" id="use-optimized-btn" class="btn-primary" style="padding: 8px 20px;">
+                                <button type="button" id="use-optimized-btn" class="btn-primary"
+                                    style="padding: 8px 20px;">
                                     ✅ 使用優化後的需求
                                 </button>
-                                <button type="button" id="cancel-optimized-btn" class="btn-secondary" style="padding: 8px 20px;">
+                                <button type="button" id="cancel-optimized-btn" class="btn-secondary"
+                                    style="padding: 8px 20px;">
                                     ❌ 取消
                                 </button>
-                                <button type="button" id="revert-original-btn" class="btn-secondary" style="padding: 8px 20px;">
+                                <button type="button" id="revert-original-btn" class="btn-secondary"
+                                    style="padding: 8px 20px;">
                                     ↩️ 恢復原始需求
                                 </button>
                             </div>
@@ -1287,7 +1289,7 @@
         let originalRequirements = ''; // 儲存原始需求
 
         // 優化需求按鈕事件
-        document.getElementById('optimize-btn').addEventListener('click', async function() {
+        document.getElementById('optimize-btn').addEventListener('click', async function () {
             const requirementsInput = document.getElementById('requirements');
             const requirements = requirementsInput.value.trim();
             const docType = document.getElementById('doc-type').value;
@@ -1353,7 +1355,7 @@
         });
 
         // 使用優化後的需求
-        document.getElementById('use-optimized-btn').addEventListener('click', function() {
+        document.getElementById('use-optimized-btn').addEventListener('click', function () {
             const optimizedText = document.getElementById('optimized-requirements').value;
             document.getElementById('requirements').value = optimizedText;
             document.getElementById('optimized-section').style.display = 'none';
@@ -1361,13 +1363,13 @@
         });
 
         // 取消優化
-        document.getElementById('cancel-optimized-btn').addEventListener('click', function() {
+        document.getElementById('cancel-optimized-btn').addEventListener('click', function () {
             document.getElementById('optimized-section').style.display = 'none';
             document.getElementById('optimized-requirements').value = '';
         });
 
         // 恢復原始需求
-        document.getElementById('revert-original-btn').addEventListener('click', function() {
+        document.getElementById('revert-original-btn').addEventListener('click', function () {
             if (originalRequirements) {
                 document.getElementById('requirements').value = originalRequirements;
                 document.getElementById('optimized-requirements').value = originalRequirements;
@@ -1415,6 +1417,201 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(requestData)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert(alertElement, 'success', '✅ 文檔生成成功！');
+                    showGenerationResult(data);
+                    loadGeneratedDocuments();
+                } else {
+                    showAlert(alertElement, 'error', '❌ ' + (data.error || '生成失敗'));
+                }
+            } catch (error) {
+                showAlert(alertElement, 'error', '❌ 生成失敗: ' + error.message);
+            } finally {
+                generateBtn.innerHTML = '✨ 生成文檔';
+                generateBtn.disabled = false;
+            }
+        }
+
+        // 顯示生成結果
+        function showGenerationResult(result) {
+            document.getElementById('no-result').style.display = 'none';
+            document.getElementById('result-section').style.display = 'block';
+
+            const formatIcons = {
+                'docx': '📄',
+                'pptx': '📊',
+                'pdf': '📕',
+                'md': '📝'
+            };
+
+            const resultContent = document.getElementById('result-content');
+            resultContent.innerHTML = `
+                <div class="alert alert-success show">
+                    <div>
+                        <div style="font-size: 1.2rem; font-weight: 700; margin-bottom: 10px;">
+                            ${formatIcons[result.format]} 文檔生成成功
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <strong>文件名:</strong> ${result.filename}<br>
+                            <strong>模型:</strong> ${result.usage ? result.usage.model : 'Unknown'}<br>
+                            <strong>消耗 Tokens:</strong> ${result.usage ? (result.usage.input_tokens + result.usage.output_tokens) : 0}<br>
+                            <strong>預估成本:</strong> $${result.usage ? result.usage.cost.toFixed(4) : '0.0000'}
+                        </div>
+                        <a href="${API_BASE_URL}/download/${result.filename}" class="btn btn-success">
+                            ⬇️ 下載文檔
+                        </a>
+                    </div>
+                </div>
+                <div style="margin-top: 25px;">
+                    <h4 style="margin-bottom: 15px; color: var(--dark);">📝 內容預覽</h4>
+                    <div class="result-preview">${result.preview || '無預覽內容'}</div>
+                </div>
+            `;
+        }
+
+        // 載入已生成的文檔
+        async function loadGeneratedDocuments() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/generated_documents`);
+                const documents = await response.json();
+
+                const listElement = document.getElementById('document-list');
+
+                const formatIcons = {
+                    'DOCX': '📄',
+                    'PPTX': '📊',
+                    'PDF': '📕',
+                    'MD': '📝'
+                };
+
+                if (documents.length === 0) {
+                    listElement.innerHTML = '<div style="text-align: center; padding: 40px; color: #94a3b8;">暫無生成記錄</div>';
+                } else {
+                    listElement.innerHTML = documents.map(doc => `
+                        <div class="list-item">
+                            <input type="checkbox" class="doc-checkbox" value="${doc.filename}" onchange="updateBatchDeleteButton()" style="margin-right: 12px;">
+                            <div class="list-item-info">
+                                <div class="list-item-name">
+                                    ${formatIcons[doc.format] || '📄'} ${doc.filename}
+                                </div>
+                                <div class="list-item-meta">
+                                    <span>📦 ${formatFileSize(doc.size)}</span>
+                                    <span>📅 ${doc.created}</span>
+                                    <span class="badge badge-primary">${doc.format}</span>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <a href="${API_BASE_URL}/download/${doc.filename}" class="btn btn-success btn-sm">
+                                    ⬇️ 下載
+                                </a>
+                                <button onclick="deleteGeneratedDocument('${doc.filename}')" class="btn btn-danger btn-sm">
+                                    🗑️ 刪除
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('載入文檔列表失敗:', error);
+            }
+        }
+
+        // 刪除模板
+        async function deleteTemplate(filename, event) {
+            event.stopPropagation();
+
+            if (!confirm(`確定要刪除模板 "${filename}" 嗎？`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/delete_template/${filename}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    loadTemplates();
+                    loadTemplateOptions();
+                } else {
+                    alert('❌ ' + (data.error || '刪除失敗'));
+                }
+            } catch (error) {
+                alert('❌ 刪除失敗: ' + error.message);
+            }
+        }
+
+        // 刪除生成的文檔
+        async function deleteGeneratedDocument(filename) {
+            if (!confirm(`確定要刪除文檔 "${filename}" 嗎？`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/delete_generated/${filename}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    loadGeneratedDocuments();
+                } else {
+                    alert('❌ ' + (data.error || '刪除失敗'));
+                }
+            } catch (error) {
+                alert('❌ 刪除失敗: ' + error.message);
+            }
+        }
+
+        // 全選/取消全選
+        function toggleSelectAll() {
+            const selectAllCheckbox = document.getElementById('select-all-docs');
+            const checkboxes = document.querySelectorAll('.doc-checkbox');
+            checkboxes.forEach(cb => cb.checked = selectAllCheckbox.checked);
+            updateBatchDeleteButton();
+        }
+
+        // 更新批量刪除按鈕顯示狀態
+        function updateBatchDeleteButton() {
+            const checkboxes = document.querySelectorAll('.doc-checkbox:checked');
+            const batchDeleteBtn = document.getElementById('batch-delete-btn');
+            const selectAllCheckbox = document.getElementById('select-all-docs');
+
+            if (checkboxes.length > 0) {
+                batchDeleteBtn.style.display = 'block';
+                batchDeleteBtn.textContent = `🗑️ 刪除選中項 (${checkboxes.length})`;
+            } else {
+                batchDeleteBtn.style.display = 'none';
+            }
+
+            // 更新全選框狀態
+            const allCheckboxes = document.querySelectorAll('.doc-checkbox');
+            selectAllCheckbox.checked = allCheckboxes.length > 0 && checkboxes.length === allCheckboxes.length;
+        }
+
+        // 批量刪除文檔
+        async function batchDeleteDocuments() {
+            const checkboxes = document.querySelectorAll('.doc-checkbox:checked');
+            const filenames = Array.from(checkboxes).map(cb => cb.value);
+
+            if (filenames.length === 0) {
+                return;
+            }
+
+            if (!confirm(`確定要刪除 ${filenames.length} 個文檔嗎？`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/batch_delete_generated`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                 });
 
                 const data = await response.json();
@@ -1684,6 +1881,17 @@
             });
             document.getElementById('result-section').style.display = 'none';
             document.getElementById('no-result').style.display = 'block';
+
+            // 清空 AI 優化相關內容
+            document.getElementById('optimized-requirements').value = '';
+            document.getElementById('optimized-section').style.display = 'none';
+            originalRequirements = '';
+
+            // 重置文檔類型相關 UI
+            document.getElementById('requirements-label').textContent = '需求描述';
+            document.getElementById('requirements').placeholder = '請描述您的具體需求...';
+            document.getElementById('old-doc-upload-section').style.display = 'none';
+            window.extractedImageFolder = null;
         }
 
         // 顯示提示信息
