@@ -78,13 +78,26 @@ class AIService:
                 chat_session = model.start_chat(history=[])
                 response = chat_session.send_message(prompt)
                 
-                # Gemini 目前免費，或者需要從 response.usage_metadata 獲取 token 數
-                # 這裡簡單返回 0 成本
+                # 從 Gemini response 中提取 token 使用量
+                input_tokens = 0
+                output_tokens = 0
+                
+                if hasattr(response, 'usage_metadata'):
+                    usage_metadata = response.usage_metadata
+                    input_tokens = getattr(usage_metadata, 'prompt_token_count', 0)
+                    output_tokens = getattr(usage_metadata, 'candidates_token_count', 0)
+                
+                # Gemini 2.0 Flash 目前免費，成本為 0
+                cost = 0.0
+                
+                # 記錄 token 使用量
+                log_cost_to_file(model_name, input_tokens, output_tokens, cost)
+                
                 usage_info = {
                     "model": model_name,
-                    "input_tokens": 0,
-                    "output_tokens": 0,
-                    "cost": 0.0
+                    "input_tokens": input_tokens,
+                    "output_tokens": output_tokens,
+                    "cost": cost
                 }
                 return response.text, usage_info
             except Exception as e:

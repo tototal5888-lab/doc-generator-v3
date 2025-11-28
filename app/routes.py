@@ -146,10 +146,38 @@ def optimize_requirements():
         # 獲取 AI 服務
         ai_service = get_ai_service()
 
+        # 1.5 讀取 Profile (角色設定)
+        profile_content = ""
+        try:
+            # 根據文檔類型選擇 Profile
+            if doc_type in ['sop', 'sop_optimize']:
+                profile_path = 'PTT_PROFILE.md'
+            else:
+                profile_path = 'SYS_PROFILE.md'
+            
+            # 讀取 Profile 內容
+            if os.path.exists(profile_path):
+                with open(profile_path, 'r', encoding='utf-8') as f:
+                    profile_content = f.read()
+                # 添加分隔線，確保 AI 區分角色設定與具體指令
+                profile_content = f"{profile_content}\n\n=== Role Definition End ===\n\n"
+                print(f"[INFO] Loaded profile from {profile_path}")
+            else:
+                print(f"[WARNING] Profile {profile_path} not found")
+                
+        except Exception as e:
+            print(f"[ERROR] Failed to read profile: {e}")
+
         # 根據文檔類型構建優化提示詞
         if doc_type == 'sop':
             # SOP 專用的優化提示詞
-            optimize_prompt = f"""你現在是一位企業內部系統的 SOP 工程師，熟悉採購/廠商報價/審核流程。
+            role_def = "你現在是一位企業內部系統的 SOP 工程師，熟悉採購/廠商報價/審核流程。"
+            if profile_content:
+                role_def = "" # 使用 Profile 中的角色設定
+            
+            optimize_prompt = f"""
+{profile_content}
+{role_def}
 輸出語言：繁體中文。
 
 請依照我提供的功能模組，產生標準 SOP 文件。
@@ -174,7 +202,9 @@ def optimize_requirements():
 
         elif doc_type == 'system_doc':
             # 系統文檔的優化提示詞
-            optimize_prompt = f"""請優化以下系統文檔的需求描述，使其更加清晰、完整、專業。
+            optimize_prompt = f"""
+{profile_content}
+請優化以下系統文檔的需求描述，使其更加清晰、完整、專業。
 
 原始需求：
 {requirements}
@@ -191,7 +221,9 @@ def optimize_requirements():
 
         elif doc_type == 'technical_report':
             # 技術報告的優化提示詞
-            optimize_prompt = f"""請優化以下技術報告的需求描述，使其更加清晰、完整、專業。
+            optimize_prompt = f"""
+{profile_content}
+請優化以下技術報告的需求描述，使其更加清晰、完整、專業。
 
 原始需求：
 {requirements}
@@ -208,7 +240,9 @@ def optimize_requirements():
 
         else:
             # 預設的優化提示詞
-            optimize_prompt = f"""請優化以下需求描述，使其更加清晰、完整、專業。
+            optimize_prompt = f"""
+{profile_content}
+請優化以下需求描述，使其更加清晰、完整、專業。
 
 原始需求：
 {requirements}
@@ -254,11 +288,34 @@ def generate_document():
             
         template_content = FileProcessor.extract_text(template_path)
         
+        # 1.5 讀取 Profile (角色設定)
+        profile_content = ""
+        try:
+            # 根據文檔類型選擇 Profile
+            if doc_type in ['sop', 'sop_optimize']:
+                profile_path = 'PTT_PROFILE.md'
+            else:
+                profile_path = 'SYS_PROFILE.md'
+            
+            # 讀取 Profile 內容
+            if os.path.exists(profile_path):
+                with open(profile_path, 'r', encoding='utf-8') as f:
+                    profile_content = f.read()
+                # 添加分隔線，確保 AI 區分角色設定與具體指令
+                profile_content = f"{profile_content}\n\n=== Role Definition End ===\n\n"
+                print(f"[INFO] Loaded profile from {profile_path}")
+            else:
+                print(f"[WARNING] Profile {profile_path} not found")
+                
+        except Exception as e:
+            print(f"[ERROR] Failed to read profile: {e}")
+
         # 2. 構建 Prompt
         prompts = {
             "system_doc": {
                 "name": "系統文檔",
                 "prompt": f"""
+{profile_content}
 請根據以下模板結構和用戶需求，生成一份專業的系統文檔。
 
 模板內容：
@@ -280,6 +337,7 @@ def generate_document():
             "sop": {
                 "name": "SOP標準作業程序",
                 "prompt": f"""
+{profile_content}
 請根據以下模板結構和用戶需求，生成一份標準作業程序(SOP)文檔。
 
 模板內容：
@@ -301,6 +359,7 @@ def generate_document():
             "tech_report": {
                 "name": "技術報告",
                 "prompt": f"""
+{profile_content}
 請根據以下模板結構和用戶需求，生成一份技術分析報告。
 
 模板內容：
@@ -322,6 +381,7 @@ def generate_document():
             "sop_optimize": {
                 "name": "SOP優化",
                 "prompt": f"""
+{profile_content}
 你是一位專業的 SOP 文檔優化專家。請將以下舊的 SOP 文檔優化為統一、專業的標準作業程序。
 
 === 原始 SOP 內容 ===
