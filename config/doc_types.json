@@ -1,0 +1,32 @@
+{
+  "doc_types": [
+    {
+      "id": "system_doc",
+      "name": "系統文檔",
+      "icon": "📋",
+      "profile": "SYS_PROFILE.md",
+      "order": 1
+    },
+    {
+      "id": "sop",
+      "name": "SOP標準作業程序",
+      "icon": "📝",
+      "profile": "PTT_PROFILE.md",
+      "order": 2
+    },
+    {
+      "id": "technical_report",
+      "name": "技術報告",
+      "icon": "📊",
+      "profile": "SYS_PROFILE.md",
+      "order": 3
+    },
+    {
+      "id": "sop_optimize",
+      "name": "SOP優化（風格統一）",
+      "icon": "🔄",
+      "profile": "PTT_PROFILE.md",
+      "order": 4
+    }
+  ]
+}

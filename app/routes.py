@@ -441,8 +441,8 @@ def generate_document():
         generated_content, usage_info = ai_service.generate_content(doc_config['prompt'])
         
         # 4. 格式轉換與保存
-        timestamp = int(time.time())
-        datetime_str = time.strftime('%Y%m%d%H%M%S')  # 格式：yyyymmddHHMMSS
+        from datetime import datetime
+        datetime_str = datetime.now().strftime('%Y%m%d%H%M%S')  # 格式：YYYYMMDDHHMMSS
         
         # 生成文件名：如果是 SOP 優化，保留原文件名
         if doc_type == 'sop_optimize':
@@ -450,8 +450,8 @@ def generate_document():
             original_name = os.path.splitext(template_file)[0]
             base_filename = f"{original_name}_{datetime_str}"
         else:
-            # 其他類型使用原有命名方式
-            base_filename = f"generated_{doc_type}_{timestamp}"
+            # 其他類型使用日期時間格式
+            base_filename = f"generated_{doc_type}_{datetime_str}"
         
         output_folder = current_app.config['OUTPUT_FOLDER']
         

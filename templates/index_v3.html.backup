@@ -1,0 +1,1935 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI文檔生成器 V3.0 - 專業版</title>
+
+    <!-- Favicon and App Icons -->
+    <link rel="icon" type="image/png" href="/static/icon.png">
+    <link rel="apple-touch-icon" href="/static/icon.png">
+    <link rel="shortcut icon" type="image/png" href="/static/icon.png">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --dark: #1e293b;
+            --light: #f8fafc;
+            --border: #e2e8f0;
+            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--dark);
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+            animation: fadeInDown 0.6s ease;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .header-icon {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+            background: white;
+            border-radius: 12px;
+            padding: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .header .version {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            animation: fadeInUp 0.6s ease 0.2s backwards;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 35px;
+            box-shadow: var(--shadow-lg);
+            transition: all 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 25px 30px -5px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .card-icon {
+            font-size: 2rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .card-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 0.95rem;
+        }
+
+        .form-label-icon {
+            font-size: 1.1rem;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 14px 18px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.3s;
+            font-family: inherit;
+            background: var(--light);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: white;
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        }
+
+        textarea.form-control {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .format-selector {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .format-option {
+            position: relative;
+        }
+
+        .format-option input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+        }
+
+        .format-option label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: var(--light);
+        }
+
+        .format-option input[type="radio"]:checked+label {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border-color: var(--primary);
+            transform: scale(1.05);
+        }
+
+        .format-icon {
+            font-size: 1.5rem;
+        }
+
+        .format-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .upload-area {
+            position: relative;
+            padding: 60px 20px;
+            border: 3px dashed var(--primary);
+            border-radius: 15px;
+            text-align: center;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.05));
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+            border-color: var(--secondary);
+            transform: scale(1.02);
+        }
+
+        .upload-area.dragover {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.15));
+            border-color: var(--secondary);
+        }
+
+        .upload-icon {
+            font-size: 3.5rem;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .upload-text {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 8px;
+        }
+
+        .upload-hint {
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 32px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--dark);
+            border: 2px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--light);
+            border-color: var(--primary);
+        }
+
+        /* AI 優化按鈕特殊樣式 */
+        #optimize-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        #optimize-btn:active {
+            transform: translateY(0);
+        }
+
+        #optimize-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 0.9rem;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            background: white;
+            padding: 10px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            box-shadow: var(--shadow);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px 20px;
+            background: transparent;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: #64748b;
+        }
+
+        .tab:hover {
+            background: var(--light);
+            color: var(--dark);
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.4s;
+        }
+
+        .template-list,
+        .document-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .list-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px;
+            background: var(--light);
+            border-radius: 12px;
+            margin-bottom: 12px;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .list-item:hover {
+            background: white;
+            border-color: var(--primary);
+            transform: translateX(5px);
+        }
+
+        .list-item-info {
+            flex: 1;
+        }
+
+        .list-item-name {
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 5px;
+        }
+
+        .list-item-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.85rem;
+            color: #64748b;
+        }
+
+        .alert {
+            padding: 16px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: none;
+            align-items: center;
+            gap: 12px;
+            animation: slideInDown 0.4s;
+        }
+
+        .alert.show {
+            display: flex;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 2px solid #10b981;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 2px solid #ef4444;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .badge-primary {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .config-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .result-preview {
+            background: var(--light);
+            padding: 20px;
+            border-radius: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        /* 滾動條樣式 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--light);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-dark);
+        }
+
+        /* 動畫 */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInDown {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* 模態框樣式 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            animation: fadeIn 0.3s;
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 0;
+            max-width: 800px;
+            width: 90%;
+            max-height: 80vh;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: fadeInUp 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            padding: 25px 30px;
+            border-bottom: 2px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin: 0;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #64748b;
+            transition: all 0.3s;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:hover {
+            background: var(--light);
+            color: var(--danger);
+        }
+
+        .modal-body {
+            padding: 30px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .template-content {
+            background: var(--light);
+            padding: 20px;
+            border-radius: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 50vh;
+            overflow-y: auto;
+        }
+
+        /* 響應式設計 */
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .config-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .format-selector {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>
+                <img src="/static/icon.png" alt="AI文檔生成器" class="header-icon">
+                AI文檔生成器
+            </h1>
+            <div class="version">V3.0 專業版 | 多格式輸出</div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('generate', event)">
+                <span>📝</span> 生成文檔
+            </button>
+            <button class="tab" onclick="switchTab('templates', event)">
+                <!-- 生成文檔 Tab -->
+                <div id="generate-tab" class="tab-content active full-width">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                        <!-- 左側：配置 -->
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-icon">📝</span>
+                                <h2 class="card-title">文檔配置</h2>
+                            </div>
+
+                            <div id="generate-alert" class="alert"></div>
+
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <span class="form-label-icon">📋</span>
+                                    文檔類型
+                                </label>
+                                <select id="doc-type" class="form-control">
+                                    <option value="">請選擇文檔類型...</option>
+                                    <option value="system_doc">1. 系統文檔</option>
+                                    <option value="sop">2. SOP標準作業程序</option>
+                                    <option value="technical_report">3. 技術報告</option>
+                                    <option value="sop_optimize">4. 🔄 SOP優化（風格統一）</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <span class="form-label-icon">📄</span>
+                                    選擇模板
+                                </label>
+                                <select id="template-select" class="form-control">
+                                    <option value="">請先上傳模板...</option>
+                                </select>
+                            </div>
+
+                            <!-- 舊文檔上傳區域（僅在 SOP 優化時顯示） -->
+                            <div id="old-doc-upload-section" class="form-group" style="display: none;">
+                                <label class="form-label">
+                                    <span class="form-label-icon">📤</span>
+                                    上傳舊文檔（可選）
+                                </label>
+                                <div id="old-doc-drop-area" class="upload-area"
+                                    style="padding: 30px 20px; cursor: pointer;">
+                                    <input type="file" id="old-doc-input" style="display: none;"
+                                        accept=".pdf,.docx,.doc,.pptx,.ppt,.txt,.md">
+                                    <span class="upload-icon" style="font-size: 2.5rem;">📄</span>
+                                    <div class="upload-text">拖放文件到此處或點擊選擇</div>
+                                    <div class="upload-hint">支持：PDF, DOCX, DOC, PPTX, PPT, TXT, MD</div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <span class="form-label-icon">💬</span>
+                                    <span id="requirements-label">需求描述</span>
+                                </label>
+                                <textarea id="requirements" class="form-control"
+                                    placeholder="請描述您的具體需求...&#10;&#10;提示：如選擇「SOP優化」，請在此貼上舊的 SOP 內容"
+                                    rows="5"></textarea>
+
+                                <!-- AI 優化按鈕 -->
+                                <div style="margin-top: 10px; text-align: right;">
+                                    <button type="button" id="optimize-btn"
+                                        style="padding: 8px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
+                                        <span id="optimize-btn-text">✨ AI 優化需求</span>
+                                        <span id="optimize-btn-loading" style="display: none;">⏳ 優化中...</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- AI 優化結果區域 (預設隱藏) -->
+                            <div class="form-group" id="optimized-section" style="display: none;">
+                                <label class="form-label">
+                                    <span class="form-label-icon">✨</span>
+                                    <span>AI 優化後的需求 (可編輯)</span>
+                                </label>
+                                <textarea id="optimized-requirements" class="form-control"
+                                    placeholder="優化後的需求描述將顯示在這裡..." rows="8"></textarea>
+
+                                <div style="margin-top: 10px; display: flex; gap: 10px;">
+                                    <button type="button" id="use-optimized-btn" class="btn-primary"
+                                        style="padding: 8px 20px;">
+                                        ✅ 使用優化後的需求
+                                    </button>
+                                    <button type="button" id="cancel-optimized-btn" class="btn-secondary"
+                                        style="padding: 8px 20px;">
+                                        ❌ 取消
+                                    </button>
+                                    <button type="button" id="revert-original-btn" class="btn-secondary"
+                                        style="padding: 8px 20px;">
+                                        ↩️ 恢復原始需求
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <span class="form-label-icon">🎨</span>
+                                    輸出格式
+                                </label>
+                                <div class="format-selector" id="format-selector">
+                                    <div class="format-option">
+                                        <input type="radio" name="format" id="format-docx" value="docx">
+                                        <label for="format-docx">
+                                            <span class="format-icon">📄</span>
+                                            <span class="format-name">Word</span>
+                                        </label>
+                                    </div>
+                                    <div class="format-option">
+                                        <input type="radio" name="format" id="format-pptx" value="pptx" checked>
+                                        <label for="format-pptx">
+                                            <span class="format-icon">📊</span>
+                                            <span class="format-name">PowerPoint</span>
+                                        </label>
+                                    </div>
+                                    <div class="format-option">
+                                        <input type="radio" name="format" id="format-pdf" value="pdf">
+                                        <label for="format-pdf">
+                                            <span class="format-icon">📕</span>
+                                            <span class="format-name">PDF</span>
+                                        </label>
+                                    </div>
+                                    <div class="format-option">
+                                        <input type="radio" name="format" id="format-md" value="md">
+                                        <label for="format-md">
+                                            <span class="format-icon">📝</span>
+                                            <span class="format-name">Markdown</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; gap: 12px; margin-top: 30px;">
+                                <button id="generate-btn" class="btn btn-primary" style="flex: 1;"
+                                    onclick="generateDocument()">
+                                    ✨ 生成文檔
+                                </button>
+                                <button class="btn btn-secondary" onclick="clearForm()">
+                                    🔄 清空
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 右側：結果 -->
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-icon">📦</span>
+                                <h2 class="card-title">生成結果</h2>
+                            </div>
+
+                            <div id="result-section" style="display: none;">
+                                <div id="result-content"></div>
+                            </div>
+
+                            <div id="no-result" style="text-align: center; padding: 60px 20px; color: #94a3b8;">
+                                <div style="font-size: 4rem; margin-bottom: 20px;">📭</div>
+                                <div style="font-size: 1.1rem; font-weight: 600;">尚未生成文檔</div>
+                                <div style="font-size: 0.9rem; margin-top: 8px;">完成左側配置後點擊生成按鈕</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 模板管理 Tab -->
+                <div id="templates-tab" class="tab-content full-width">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                        <!-- 上傳模板 -->
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-icon">📤</span>
+                                <h2 class="card-title">上傳模板</h2>
+                            </div>
+
+                            <div id="upload-alert" class="alert"></div>
+
+                            <div class="upload-area" id="upload-area"
+                                onclick="document.getElementById('file-input').click()">
+                                <input type="file" id="file-input" style="display: none;"
+                                    accept=".pdf,.docx,.doc,.pptx,.ppt,.txt" onchange="uploadTemplate()">
+                                <span class="upload-icon">☁️</span>
+                                <div class="upload-text">點擊或拖放文件上傳</div>
+                                <div class="upload-hint">支持：PDF, DOCX, DOC, PPTX, PPT, TXT</div>
+                            </div>
+                        </div>
+
+                        <!-- 模板列表 -->
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-icon">📁</span>
+                                <h2 class="card-title">已上傳模板</h2>
+                            </div>
+
+                            <div id="template-list" class="template-list"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 文檔記錄 Tab -->
+                <div id="documents-tab" class="tab-content full-width">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon">📚</span>
+                            <h2 class="card-title">生成記錄</h2>
+                        </div>
+
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding: 0 10px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                <input type="checkbox" id="select-all-docs" onchange="toggleSelectAll()">
+                                <span style="font-weight: 600;">全選</span>
+                            </label>
+                            <button id="batch-delete-btn" class="btn btn-danger btn-sm" onclick="batchDeleteDocuments()"
+                                style="display: none;">
+                                🗑️ 刪除選中項
+                            </button>
+                        </div>
+                        <div id="document-list" class="document-list"></div>
+                    </div>
+                </div>
+
+
+                <!-- 模型設定 Tab -->
+                <div id="config-tab" class="tab-content full-width">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon">🤖</span>
+                            <h2 class="card-title">AI 模型設定</h2>
+                        </div>
+
+                        <div id="config-alert" class="alert"></div>
+
+                        <div
+                            style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.05)); 
+                                padding: 20px; border-radius: 12px; margin-bottom: 25px; border-left: 4px solid var(--primary);">
+                            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
+                                <span style="font-size: 1.5rem;">ℹ️</span>
+                                <strong style="color: var(--dark);">API 密鑰管理說明</strong>
+                            </div>
+                            <p style="color: #64748b; margin: 0; line-height: 1.6;">
+                                API 密鑰現在由 <code
+                                    style="background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px;">.env</code>
+                                文件統一管理。
+                                請在伺服器端的 <code
+                                    style="background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px;">.env</code>
+                                文件中配置
+                                <code
+                                    style="background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px;">GEMINI_API_KEY</code>
+                                和
+                                <code
+                                    style="background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px;">OPENAI_API_KEY</code>。
+                            </p>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <span class="form-label-icon">🤖</span>
+                                AI 引擎選擇
+                            </label>
+                            <select id="api-type" class="form-control" onchange="updateModelOptions()">
+                                <option value="gemini">Google Gemini 2.0 Flash (免費額度高)</option>
+                                <option value="openai">OpenAI GPT (需付費)</option>
+                                <option value="mock">模擬環境 (測試用)</option>
+                            </select>
+                            <div style="margin-top: 8px; font-size: 0.9rem; color: #64748b;">
+                                <span id="api-type-hint">選擇要使用的 AI 引擎</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group" id="openai-model-group">
+                            <label class="form-label">
+                                <span class="form-label-icon">🎯</span>
+                                OpenAI 模型
+                            </label>
+                            <select id="openai-model" class="form-control">
+                                <option value="gpt-4o">GPT-4o (最新、最強)</option>
+                                <option value="gpt-4o-mini" selected>GPT-4o Mini (推薦、性價比高)</option>
+                                <option value="gpt-4-turbo">GPT-4 Turbo (強大)</option>
+                                <option value="gpt-4">GPT-4 (經典)</option>
+                                <option value="gpt-3.5-turbo">GPT-3.5 Turbo (便宜)</option>
+                            </select>
+                            <div style="margin-top: 8px; font-size: 0.9rem; color: #64748b;">
+                                <span id="model-hint">僅在選擇 OpenAI 引擎時生效</span>
+                            </div>
+                        </div>
+
+                        <button id="save-config-btn" class="btn btn-primary" onclick="saveModelConfig()">
+                            💾 保存設定
+                        </button>
+                    </div>
+                </div>
+        </div>
+    </div>
+
+    <!-- 模板檢視模態框 -->
+    <div id="template-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-template-name">模板內容</h3>
+                <button class="modal-close" onclick="closeTemplateModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div id="modal-template-content" class="template-content">載入中...</div>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://127.0.0.1:5000/api';
+
+        // Tab切換
+        function switchTab(tabName, event) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            if (event && event.target) event.target.closest('.tab').classList.add('active');
+            document.getElementById(tabName + '-tab').classList.add('active');
+
+            if (tabName === 'templates') loadTemplates();
+            if (tabName === 'documents') loadGeneratedDocuments();
+            if (tabName === 'config') loadConfig();
+            if (tabName === 'generate') loadTemplateOptions();
+        }
+
+        // 載入模型配置
+        async function loadConfig() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/config`);
+                const config = await response.json();
+
+                document.getElementById('api-type').value = config.api_type || 'gemini';
+                document.getElementById('openai-model').value = config.openai_model || 'gpt-4o-mini';
+
+                // 根據選擇的 API 類型更新顯示
+                updateModelOptions();
+            } catch (error) {
+                console.error('載入配置失敗:', error);
+            }
+        }
+
+        // 更新模型選項顯示
+        function updateModelOptions() {
+            const apiType = document.getElementById('api-type').value;
+            const openaiModelGroup = document.getElementById('openai-model-group');
+            const apiTypeHint = document.getElementById('api-type-hint');
+
+            if (apiType === 'openai') {
+                openaiModelGroup.style.display = 'block';
+                apiTypeHint.textContent = '使用 OpenAI GPT 模型,需要有效的 API Key';
+            } else if (apiType === 'gemini') {
+                openaiModelGroup.style.display = 'none';
+                apiTypeHint.textContent = '使用 Google Gemini 2.0 Flash,免費額度高';
+            } else if (apiType === 'mock') {
+                openaiModelGroup.style.display = 'none';
+                apiTypeHint.textContent = '模擬模式,不調用真實 API,用於測試';
+            }
+        }
+
+        // 保存模型配置
+        async function saveModelConfig() {
+            const config = {
+                api_type: document.getElementById('api-type').value,
+                openai_model: document.getElementById('openai-model').value
+            };
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/config`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showAlert('config-alert', 'success', '✅ 模型設定已保存');
+                } else {
+                    showAlert('config-alert', 'error', '❌ 保存失敗: ' + (result.error || '未知錯誤'));
+                }
+            } catch (error) {
+                showAlert('config-alert', 'error', '❌ 保存失敗: ' + error.message);
+            }
+        }
+
+        // 上傳模板
+        async function uploadTemplate() {
+            const fileInput = document.getElementById('file-input');
+            const file = fileInput.files[0];
+
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/upload_template`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert('upload-alert', 'success', '✅ ' + result.message);
+                    loadTemplates();
+                    loadTemplateOptions();
+                } else {
+                    showAlert('upload-alert', 'error', '❌ ' + result.error);
+                }
+            } catch (error) {
+                showAlert('upload-alert', 'error', '❌ 上傳失敗: ' + error.message);
+            }
+
+            fileInput.value = '';
+        }
+
+        // 載入模板列表
+        async function loadTemplates() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/templates`);
+                const templates = await response.json();
+
+                const listElement = document.getElementById('template-list');
+
+                if (templates.length === 0) {
+                    listElement.innerHTML = '<div style="text-align: center; padding: 40px; color: #94a3b8;">尚無模板</div>';
+                } else {
+                    listElement.innerHTML = templates.map(template => `
+                        <div class="list-item">
+                            <div class="list-item-info">
+                                <div class="list-item-name">
+                                    <span class="badge badge-primary">${template.type}</span>
+                                    ${template.filename}
+                                </div>
+                                <div class="list-item-meta">
+                                    <span>📦 ${formatFileSize(template.size)}</span>
+                                    <span>📅 ${template.modified}</span>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <a href="${API_BASE_URL}/download_template/${encodeURIComponent(template.filename)}" 
+                                   class="btn btn-secondary btn-sm" 
+                                   download="${template.filename}">
+                                    📥 下載
+                                </a>
+                                <button class="btn btn-danger btn-sm" onclick="deleteTemplate('${template.filename}', event)">
+                                    🗑️ 刪除
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('載入模板失敗:', error);
+            }
+        }
+
+        // 載入模板選項
+        async function loadTemplateOptions() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/templates`);
+                const templates = await response.json();
+
+                const selectElement = document.getElementById('template-select');
+
+                if (templates.length === 0) {
+                    selectElement.innerHTML = '<option value="">請先上傳模板...</option>';
+                } else {
+                    selectElement.innerHTML = '<option value="">請選擇模板...</option>' +
+                        templates.map((template, index) =>
+                            `<option value="${template.filename}">${index + 1}. [${template.type}] ${template.filename}</option>`
+                        ).join('');
+                }
+            } catch (error) {
+                console.error('載入模板選項失敗:', error);
+            }
+        }
+
+        // 檢視模板內容
+        async function viewTemplate(filename, event) {
+            event.stopPropagation();
+
+            const modal = document.getElementById('template-modal');
+            const modalTitle = document.getElementById('modal-template-name');
+            const modalContent = document.getElementById('modal-template-content');
+
+            // 顯示模態框
+            modal.classList.add('show');
+            modalTitle.textContent = `模板內容: ${filename}`;
+            modalContent.textContent = '載入中...';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/view_template/${encodeURIComponent(filename)}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    modalContent.textContent = result.content;
+                } else {
+                    modalContent.textContent = `錯誤: ${result.error}`;
+                }
+            } catch (error) {
+                modalContent.textContent = `載入失敗: ${error.message}`;
+            }
+        }
+
+        // 關閉模板檢視模態框
+        function closeTemplateModal() {
+            const modal = document.getElementById('template-modal');
+            modal.classList.remove('show');
+        }
+
+        // 點擊模態框外部關閉
+        document.addEventListener('click', function (event) {
+            const modal = document.getElementById('template-modal');
+            if (event.target === modal) {
+                closeTemplateModal();
+            }
+        });
+
+        // ESC 鍵關閉模態框
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                closeTemplateModal();
+            }
+        });
+
+        // 監聽文檔類型變更，動態調整 UI
+        document.addEventListener('DOMContentLoaded', function () {
+            const docTypeSelect = document.getElementById('doc-type');
+            const requirementsLabel = document.getElementById('requirements-label');
+            const requirementsTextarea = document.getElementById('requirements');
+            const oldDocUploadSection = document.getElementById('old-doc-upload-section');
+
+            docTypeSelect.addEventListener('change', function () {
+                if (this.value === 'sop_optimize') {
+                    requirementsLabel.textContent = '舊 SOP 內容';
+                    requirementsTextarea.placeholder = '請在此貼上您想要優化的舊 SOP 文檔內容...\n\n或使用上方的「上傳舊文檔」功能自動提取內容';
+                    oldDocUploadSection.style.display = 'block';
+                } else {
+                    requirementsLabel.textContent = '需求描述';
+                    requirementsTextarea.placeholder = '請描述您的具體需求...';
+                    oldDocUploadSection.style.display = 'none';
+                }
+            });
+
+            // 設置舊文檔拖曳功能
+            const oldDocDropArea = document.getElementById('old-doc-drop-area');
+            const oldDocInput = document.getElementById('old-doc-input');
+
+            // 點擊上傳區域時觸發文件選擇
+            oldDocDropArea.addEventListener('click', function () {
+                oldDocInput.click();
+            });
+
+            // 文件選擇後自動提取
+            oldDocInput.addEventListener('change', function () {
+                if (this.files.length > 0) {
+                    uploadOldDocument();
+                }
+            });
+
+            // 防止預設拖曳行為
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                oldDocDropArea.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            // 拖曳時的視覺回饋
+            ['dragenter', 'dragover'].forEach(eventName => {
+                oldDocDropArea.addEventListener(eventName, function () {
+                    this.classList.add('dragover');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                oldDocDropArea.addEventListener(eventName, function () {
+                    this.classList.remove('dragover');
+                }, false);
+            });
+
+            // 處理文件放下
+            oldDocDropArea.addEventListener('drop', function (e) {
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    oldDocInput.files = files;
+                    uploadOldDocument();
+                }
+            }, false);
+        });
+
+        // ==================== AI 優化需求功能 ====================
+        let originalRequirements = ''; // 儲存原始需求
+
+        // 優化需求按鈕事件
+        document.getElementById('optimize-btn').addEventListener('click', async function () {
+            const requirementsInput = document.getElementById('requirements');
+            const requirements = requirementsInput.value.trim();
+            const docType = document.getElementById('doc-type').value;
+
+            if (!requirements) {
+                alert('⚠️ 請先輸入需求描述');
+                return;
+            }
+
+            if (!docType) {
+                alert('⚠️ 請先選擇文檔類型');
+                return;
+            }
+
+            // 儲存原始需求
+            originalRequirements = requirements;
+
+            // 顯示載入狀態
+            const btn = document.getElementById('optimize-btn');
+            const btnText = document.getElementById('optimize-btn-text');
+            const btnLoading = document.getElementById('optimize-btn-loading');
+
+            btn.disabled = true;
+            btnText.style.display = 'none';
+            btnLoading.style.display = 'inline';
+
+            try {
+                const response = await fetch('/api/optimize-requirements', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        requirements: requirements,
+                        doc_type: docType
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // 顯示優化結果區域
+                    document.getElementById('optimized-section').style.display = 'block';
+                    document.getElementById('optimized-requirements').value = data.optimized_requirements;
+
+                    // 平滑滾動到優化結果
+                    document.getElementById('optimized-section').scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'nearest'
+                    });
+                } else {
+                    alert('❌ 優化失敗：' + (data.error || '未知錯誤'));
+                }
+            } catch (error) {
+                console.error('優化需求失敗:', error);
+                alert('❌ 優化失敗：' + error.message);
+            } finally {
+                // 恢復按鈕狀態
+                btn.disabled = false;
+                btnText.style.display = 'inline';
+                btnLoading.style.display = 'none';
+            }
+        });
+
+        // 使用優化後的需求
+        document.getElementById('use-optimized-btn').addEventListener('click', function () {
+            const optimizedText = document.getElementById('optimized-requirements').value;
+            document.getElementById('requirements').value = optimizedText;
+            document.getElementById('optimized-section').style.display = 'none';
+            alert('✅ 已使用優化後的需求');
+        });
+
+        // 取消優化
+        document.getElementById('cancel-optimized-btn').addEventListener('click', function () {
+            document.getElementById('optimized-section').style.display = 'none';
+            document.getElementById('optimized-requirements').value = '';
+        });
+
+        // 恢復原始需求
+        document.getElementById('revert-original-btn').addEventListener('click', function () {
+            if (originalRequirements) {
+                document.getElementById('requirements').value = originalRequirements;
+                document.getElementById('optimized-requirements').value = originalRequirements;
+                alert('✅ 已恢復原始需求');
+            }
+        });
+
+        // ==================== 生成文檔 ====================
+        // 生成文檔
+        async function generateDocument() {
+            const docType = document.getElementById('doc-type').value;
+            const template = document.getElementById('template-select').value;
+            const requirements = document.getElementById('requirements').value;
+            const format = document.querySelector('input[name="format"]:checked').value;
+            const alertElement = document.getElementById('generate-alert');
+            const generateBtn = document.getElementById('generate-btn');
+
+            if (!docType) {
+                showAlert(alertElement, 'error', '❌ 請選擇文檔類型');
+                return;
+            }
+
+            if (!template) {
+                showAlert(alertElement, 'error', '❌ 請選擇模板');
+                return;
+            }
+
+            generateBtn.innerHTML = '<span class="spinner"></span> 生成中...';
+            generateBtn.disabled = true;
+
+            try {
+                const requestData = {
+                    doc_type: docType,
+                    template: template,
+                    requirements: requirements,
+                    output_format: format
+                };
+
+                // 如果有圖片文件夾，添加到請求中
+                if (window.extractedImageFolder) {
+                    requestData.image_folder = window.extractedImageFolder;
+                }
+
+                const response = await fetch(`${API_BASE_URL}/generate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestData)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert(alertElement, 'success', '✅ 文檔生成成功！');
+                    showGenerationResult(data);
+                    loadGeneratedDocuments();
+                } else {
+                    showAlert(alertElement, 'error', '❌ ' + (data.error || '生成失敗'));
+                }
+            } catch (error) {
+                showAlert(alertElement, 'error', '❌ 生成失敗: ' + error.message);
+            } finally {
+                generateBtn.innerHTML = '✨ 生成文檔';
+                generateBtn.disabled = false;
+            }
+        }
+
+        // 顯示生成結果
+        function showGenerationResult(result) {
+            document.getElementById('no-result').style.display = 'none';
+            document.getElementById('result-section').style.display = 'block';
+
+            const formatIcons = {
+                'docx': '📄',
+                'pptx': '📊',
+                'pdf': '📕',
+                'md': '📝'
+            };
+
+            const resultContent = document.getElementById('result-content');
+            resultContent.innerHTML = `
+                <div class="alert alert-success show">
+                    <div>
+                        <div style="font-size: 1.2rem; font-weight: 700; margin-bottom: 10px;">
+                            ${formatIcons[result.format]} 文檔生成成功
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <strong>文件名:</strong> ${result.filename}<br>
+                            <strong>模型:</strong> ${result.usage ? result.usage.model : 'Unknown'}<br>
+                            <strong>消耗 Tokens:</strong> ${result.usage ? (result.usage.input_tokens + result.usage.output_tokens) : 0}<br>
+                            <strong>預估成本:</strong> $${result.usage ? result.usage.cost.toFixed(4) : '0.0000'}
+                        </div>
+                        <a href="${API_BASE_URL}/download/${result.filename}" class="btn btn-success">
+                            ⬇️ 下載文檔
+                        </a>
+                    </div>
+                </div>
+                <div style="margin-top: 25px;">
+                    <h4 style="margin-bottom: 15px; color: var(--dark);">📝 內容預覽</h4>
+                    <div class="result-preview">${result.preview || '無預覽內容'}</div>
+                </div>
+            `;
+        }
+
+        // 載入已生成的文檔
+        async function loadGeneratedDocuments() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/generated_documents`);
+                const documents = await response.json();
+
+                const listElement = document.getElementById('document-list');
+
+                const formatIcons = {
+                    'DOCX': '📄',
+                    'PPTX': '📊',
+                    'PDF': '📕',
+                    'MD': '📝'
+                };
+
+                if (documents.length === 0) {
+                    listElement.innerHTML = '<div style="text-align: center; padding: 40px; color: #94a3b8;">暫無生成記錄</div>';
+                } else {
+                    listElement.innerHTML = documents.map(doc => `
+                        <div class="list-item">
+                            <input type="checkbox" class="doc-checkbox" value="${doc.filename}" onchange="updateBatchDeleteButton()" style="margin-right: 12px;">
+                            <div class="list-item-info">
+                                <div class="list-item-name">
+                                    ${formatIcons[doc.format] || '📄'} ${doc.filename}
+                                </div>
+                                <div class="list-item-meta">
+                                    <span>📦 ${formatFileSize(doc.size)}</span>
+                                    <span>📅 ${doc.created}</span>
+                                    <span class="badge badge-primary">${doc.format}</span>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <a href="${API_BASE_URL}/download/${doc.filename}" class="btn btn-success btn-sm">
+                                    ⬇️ 下載
+                                </a>
+                                <button onclick="deleteGeneratedDocument('${doc.filename}')" class="btn btn-danger btn-sm">
+                                    🗑️ 刪除
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('載入文檔列表失敗:', error);
+            }
+        }
+
+        // 刪除模板
+        async function deleteTemplate(filename, event) {
+            event.stopPropagation();
+
+            if (!confirm(`確定要刪除模板 "${filename}" 嗎？`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/delete_template/${filename}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    loadTemplates();
+                    loadTemplateOptions();
+                } else {
+                    alert('❌ ' + (data.error || '刪除失敗'));
+                }
+            } catch (error) {
+                alert('❌ 刪除失敗: ' + error.message);
+            }
+        }
+
+        // 刪除生成的文檔
+        async function deleteGeneratedDocument(filename) {
+            if (!confirm(`確定要刪除文檔 "${filename}" 嗎？`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/delete_generated/${filename}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    loadGeneratedDocuments();
+                } else {
+                    alert('❌ ' + (data.error || '刪除失敗'));
+                }
+            } catch (error) {
+                alert('❌ 刪除失敗: ' + error.message);
+            }
+        }
+
+        // 全選/取消全選
+        function toggleSelectAll() {
+            const selectAllCheckbox = document.getElementById('select-all-docs');
+            const checkboxes = document.querySelectorAll('.doc-checkbox');
+            checkboxes.forEach(cb => cb.checked = selectAllCheckbox.checked);
+            updateBatchDeleteButton();
+        }
+
+        // 更新批量刪除按鈕顯示狀態
+        function updateBatchDeleteButton() {
+            const checkboxes = document.querySelectorAll('.doc-checkbox:checked');
+            const batchDeleteBtn = document.getElementById('batch-delete-btn');
+            const selectAllCheckbox = document.getElementById('select-all-docs');
+
+            if (checkboxes.length > 0) {
+                batchDeleteBtn.style.display = 'block';
+                batchDeleteBtn.textContent = `🗑️ 刪除選中項 (${checkboxes.length})`;
+            } else {
+                batchDeleteBtn.style.display = 'none';
+            }
+
+            // 更新全選框狀態
+            const allCheckboxes = document.querySelectorAll('.doc-checkbox');
+            selectAllCheckbox.checked = allCheckboxes.length > 0 && checkboxes.length === allCheckboxes.length;
+        }
+
+        // 批量刪除文檔
+        async function batchDeleteDocuments() {
+            const checkboxes = document.querySelectorAll('.doc-checkbox:checked');
+            const filenames = Array.from(checkboxes).map(cb => cb.value);
+
+            if (filenames.length === 0) {
+                return;
+            }
+
+            if (!confirm(`確定要刪除 ${filenames.length} 個文檔嗎？`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/batch_delete_generated`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert(alertElement, 'success', '✅ 文檔生成成功！');
+                    showGenerationResult(data);
+                    loadGeneratedDocuments();
+                } else {
+                    showAlert(alertElement, 'error', '❌ ' + (data.error || '生成失敗'));
+                }
+            } catch (error) {
+                showAlert(alertElement, 'error', '❌ 生成失敗: ' + error.message);
+            } finally {
+                generateBtn.innerHTML = '✨ 生成文檔';
+                generateBtn.disabled = false;
+            }
+        }
+
+        // 顯示生成結果
+        function showGenerationResult(result) {
+            document.getElementById('no-result').style.display = 'none';
+            document.getElementById('result-section').style.display = 'block';
+
+            const formatIcons = {
+                'docx': '📄',
+                'pptx': '📊',
+                'pdf': '📕',
+                'md': '📝'
+            };
+
+            const resultContent = document.getElementById('result-content');
+            resultContent.innerHTML = `
+                <div class="alert alert-success show">
+                    <div>
+                        <div style="font-size: 1.2rem; font-weight: 700; margin-bottom: 10px;">
+                            ${formatIcons[result.format]} 文檔生成成功
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <strong>文件名:</strong> ${result.filename}<br>
+                            <strong>模型:</strong> ${result.usage ? result.usage.model : 'Unknown'}<br>
+                            <strong>消耗 Tokens:</strong> ${result.usage ? (result.usage.input_tokens + result.usage.output_tokens) : 0}<br>
+                            <strong>預估成本:</strong> $${result.usage ? result.usage.cost.toFixed(4) : '0.0000'}
+                        </div>
+                        <a href="${API_BASE_URL}/download/${result.filename}" class="btn btn-success">
+                            ⬇️ 下載文檔
+                        </a>
+                    </div>
+                </div>
+                <div style="margin-top: 25px;">
+                    <h4 style="margin-bottom: 15px; color: var(--dark);">📝 內容預覽</h4>
+                    <div class="result-preview">${result.preview || '無預覽內容'}</div>
+                </div>
+            `;
+        }
+
+        // 載入已生成的文檔
+        async function loadGeneratedDocuments() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/generated_documents`);
+                const documents = await response.json();
+
+                const listElement = document.getElementById('document-list');
+
+                const formatIcons = {
+                    'DOCX': '📄',
+                    'PPTX': '📊',
+                    'PDF': '📕',
+                    'MD': '📝'
+                };
+
+                if (documents.length === 0) {
+                    listElement.innerHTML = '<div style="text-align: center; padding: 40px; color: #94a3b8;">暫無生成記錄</div>';
+                } else {
+                    listElement.innerHTML = documents.map(doc => `
+                        <div class="list-item">
+                            <input type="checkbox" class="doc-checkbox" value="${doc.filename}" onchange="updateBatchDeleteButton()" style="margin-right: 12px;">
+                            <div class="list-item-info">
+                                <div class="list-item-name">
+                                    ${formatIcons[doc.format] || '📄'} ${doc.filename}
+                                </div>
+                                <div class="list-item-meta">
+                                    <span>📦 ${formatFileSize(doc.size)}</span>
+                                    <span>📅 ${doc.created}</span>
+                                    <span class="badge badge-primary">${doc.format}</span>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <a href="${API_BASE_URL}/download/${doc.filename}" class="btn btn-success btn-sm">
+                                    ⬇️ 下載
+                                </a>
+                                <button onclick="deleteGeneratedDocument('${doc.filename}')" class="btn btn-danger btn-sm">
+                                    🗑️ 刪除
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('載入文檔列表失敗:', error);
+            }
+        }
+
+        // 刪除模板
+        async function deleteTemplate(filename, event) {
+            event.stopPropagation();
+
+            if (!confirm(`確定要刪除模板 "${filename}" 嗎？`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/delete_template/${filename}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    loadTemplates();
+                    loadTemplateOptions();
+                } else {
+                    alert('❌ ' + (data.error || '刪除失敗'));
+                }
+            } catch (error) {
+                alert('❌ 刪除失敗: ' + error.message);
+            }
+        }
+
+        // 刪除生成的文檔
+        async function deleteGeneratedDocument(filename) {
+            if (!confirm(`確定要刪除文檔 "${filename}" 嗎？`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/delete_generated/${filename}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    loadGeneratedDocuments();
+                } else {
+                    alert('❌ ' + (data.error || '刪除失敗'));
+                }
+            } catch (error) {
+                alert('❌ 刪除失敗: ' + error.message);
+            }
+        }
+
+        // 全選/取消全選
+        function toggleSelectAll() {
+            const selectAllCheckbox = document.getElementById('select-all-docs');
+            const checkboxes = document.querySelectorAll('.doc-checkbox');
+            checkboxes.forEach(cb => cb.checked = selectAllCheckbox.checked);
+            updateBatchDeleteButton();
+        }
+
+        // 更新批量刪除按鈕顯示狀態
+        function updateBatchDeleteButton() {
+            const checkboxes = document.querySelectorAll('.doc-checkbox:checked');
+            const batchDeleteBtn = document.getElementById('batch-delete-btn');
+            const selectAllCheckbox = document.getElementById('select-all-docs');
+
+            if (checkboxes.length > 0) {
+                batchDeleteBtn.style.display = 'block';
+                batchDeleteBtn.textContent = `🗑️ 刪除選中項 (${checkboxes.length})`;
+            } else {
+                batchDeleteBtn.style.display = 'none';
+            }
+
+            // 更新全選框狀態
+            const allCheckboxes = document.querySelectorAll('.doc-checkbox');
+            selectAllCheckbox.checked = allCheckboxes.length > 0 && checkboxes.length === allCheckboxes.length;
+        }
+
+        // 批量刪除文檔
+        async function batchDeleteDocuments() {
+            const checkboxes = document.querySelectorAll('.doc-checkbox:checked');
+            const filenames = Array.from(checkboxes).map(cb => cb.value);
+
+            if (filenames.length === 0) {
+                return;
+            }
+
+            if (!confirm(`確定要刪除 ${filenames.length} 個文檔嗎？`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/batch_delete_generated`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filenames: filenames })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('select-all-docs').checked = false;
+                    loadGeneratedDocuments();
+                } else {
+                    alert('❌ ' + (data.error || '批量刪除失敗'));
+                }
+            } catch (error) {
+                alert('❌ 批量刪除失敗: ' + error.message);
+            }
+        }
+
+        // 上傳舊文檔並提取內容
+        async function uploadOldDocument() {
+            const fileInput = document.getElementById('old-doc-input');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert('請先選擇文件');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // 顯示處理中狀態
+            const dropArea = document.getElementById('old-doc-drop-area');
+            const originalHTML = dropArea.innerHTML;
+            dropArea.innerHTML = '<div class="spinner"></div> 提取中...';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/extract_text`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('requirements').value = data.content;
+
+                    // 如果有圖片信息，保存到全局變量
+                    if (data.images) {
+                        window.extractedImageFolder = data.images.folder;
+                        alert(`✅ 內容提取成功！共提取 ${data.images.count} 張圖片`);
+                    } else {
+                        window.extractedImageFolder = null;
+                        alert('✅ 內容提取成功！');
+                    }
+                } else {
+                    alert('❌ ' + (data.error || '提取失敗'));
+                }
+            } catch (error) {
+                alert('❌ 提取失敗: ' + error.message);
+            } finally {
+                // 恢復原始狀態
+                dropArea.innerHTML = originalHTML;
+            }
+        }
+
+        // 清空表單
+        function clearForm() {
+            document.getElementById('doc-type').value = '';
+            document.getElementById('template-select').value = '';
+            document.getElementById('requirements').value = '';
+            document.querySelectorAll('input[name="format"]').forEach(input => {
+                input.checked = input.value === 'docx';
+            });
+            document.getElementById('result-section').style.display = 'none';
+            document.getElementById('no-result').style.display = 'block';
+
+            // 清空 AI 優化相關內容
+            document.getElementById('optimized-requirements').value = '';
+            document.getElementById('optimized-section').style.display = 'none';
+            originalRequirements = '';
+
+            // 重置文檔類型相關 UI
+            document.getElementById('requirements-label').textContent = '需求描述';
+            document.getElementById('requirements').placeholder = '請描述您的具體需求...';
+            document.getElementById('old-doc-upload-section').style.display = 'none';
+            window.extractedImageFolder = null;
+        }
+
+        // 顯示提示信息
+        function showAlert(element, type, message) {
+            const alertElement = typeof element === 'string' ? document.getElementById(element) : element;
+            alertElement.className = `alert alert-${type} show`;
+            alertElement.textContent = message;
+
+            setTimeout(() => {
+                alertElement.classList.remove('show');
+            }, 5000);
+        }
+
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        // 拖放上傳
+        const uploadArea = document.getElementById('upload-area');
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+
+            const file = e.dataTransfer.files[0];
+            const fileInput = document.getElementById('file-input');
+            fileInput.files = e.dataTransfer.files;
+            uploadTemplate();
+        });
+
+        // 頁面載入時初始化
+        window.addEventListener('DOMContentLoaded', () => {
+            loadTemplateOptions();
+        });
+    </script>
+</body>
+
+</html>
