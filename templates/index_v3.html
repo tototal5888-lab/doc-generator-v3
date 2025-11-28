@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-TW">
 
 <head>
@@ -676,16 +676,16 @@
 
         <!-- Tabs -->
         <div class="tabs">
-            <button class="tab active" onclick="switchTab('generate')">
+            <button class="tab active" onclick="switchTab('generate', event)">
                 <span>📝</span> 生成文檔
             </button>
-            <button class="tab" onclick="switchTab('templates')">
+            <button class="tab" onclick="switchTab('templates', event)">
                 <span>📁</span> 模板管理
             </button>
-            <button class="tab" onclick="switchTab('documents')">
+            <button class="tab" onclick="switchTab('documents', event)">
                 <span>📚</span> 文檔記錄
             </button>
-            <button class="tab" onclick="switchTab('config')">
+            <button class="tab" onclick="switchTab('config', event)">
                 <span>🤖</span> 模型設定
             </button>
         </div>
@@ -1003,11 +1003,11 @@
         const API_BASE_URL = 'http://127.0.0.1:5000/api';
 
         // Tab切換
-        function switchTab(tabName) {
+        function switchTab(tabName, event) {
             document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
-            event.target.closest('.tab').classList.add('active');
+            if (event && event.target) event.target.closest('.tab').classList.add('active');
             document.getElementById(tabName + '-tab').classList.add('active');
 
             if (tabName === 'templates') loadTemplates();

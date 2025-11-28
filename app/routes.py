@@ -3,6 +3,7 @@ import json
 import time
 from flask import Blueprint, render_template, request, jsonify, send_file, current_app
 from werkzeug.utils import secure_filename
+from .utils.helpers import safe_filename
 from .services import FileProcessor, FormatConverter, AIService
 
 bp = Blueprint('main', __name__)
@@ -48,7 +49,7 @@ def verify_password():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-@bp.route('/api/upload-template', methods=['POST'])
+@bp.route('/api/upload_template', methods=['POST'])
 def upload_template():
     if 'file' not in request.files:
         return jsonify({"error": "沒有文件部分"}), 400
@@ -58,13 +59,17 @@ def upload_template():
         return jsonify({"error": "未選擇文件"}), 400
         
     if file:
-        filename = secure_filename(file.filename)
+        filename = safe_filename(file.filename)
         # 確保文件名不重複
         base, ext = os.path.splitext(filename)
         timestamp = int(time.time())
         filename = f"{base}_{timestamp}{ext}"
         
-        save_path = os.path.join(current_app.config['TEMPLATE_STORAGE_FOLDER'], filename)
+        folder = current_app.config['TEMPLATE_STORAGE_FOLDER']
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+            
+        save_path = os.path.join(folder, filename)
         file.save(save_path)
         
         return jsonify({
@@ -114,7 +119,7 @@ def download_template(filename):
 @bp.route('/api/delete_template/<filename>', methods=['DELETE'])
 def delete_template(filename):
     try:
-        filename = secure_filename(filename)
+        filename = safe_filename(filename)
         folder = current_app.config['TEMPLATE_STORAGE_FOLDER']
         file_path = os.path.join(folder, filename)
         
@@ -515,7 +520,7 @@ def history():
 @bp.route('/api/delete_generated/<filename>', methods=['DELETE'])
 def delete_generated_document(filename):
     try:
-        filename = secure_filename(filename)
+        filename = safe_filename(filename)
         folder = current_app.config['OUTPUT_FOLDER']
         file_path = os.path.join(folder, filename)
         
@@ -546,7 +551,7 @@ def batch_delete_generated():
         errors = []
         
         for filename in filenames:
-            filename = secure_filename(filename)
+            filename = safe_filename(filename)
             
             # 只允許刪除 generated_ 開頭的文件
             if not filename.startswith('generated_'):
@@ -588,7 +593,7 @@ def extract_text():
             return jsonify({"success": False, "error": "未選擇文件"}), 400
         
         # 保存臨時文件
-        filename = secure_filename(file.filename)
+        filename = safe_filename(file.filename)
         temp_folder = current_app.config['UPLOAD_FOLDER']
         temp_path = os.path.join(temp_folder, f"temp_{filename}")
         file.save(temp_path)
