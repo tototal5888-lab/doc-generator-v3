@@ -11,31 +11,97 @@ module.exports = {
     daisyui: {
         themes: [
             {
-                soft: {
-                    "primary": "#7c9885",           // 柔和的綠色 - 主要操作
-                    "primary-content": "#ffffff",   // 主色文字
-                    "secondary": "#a8b5c8",         // 柔和的藍灰色 - 次要操作
-                    "secondary-content": "#ffffff", // 次要色文字
-                    "accent": "#c9a88a",            // 溫暖的米色 - 強調色
-                    "accent-content": "#ffffff",    // 強調色文字
-                    "neutral": "#5a5a5a",           // 中性灰
-                    "neutral-content": "#ffffff",   // 中性色文字
-                    "base-100": "#f8f7f5",          // 背景色 - 溫暖的米白色
-                    "base-200": "#eeede9",          // 次要背景 - 淺米色
-                    "base-300": "#d9d7d0",          // 邊框/分隔線 - 柔和灰
-                    "base-content": "#4a4a4a",      // 主要文字 - 深灰而非純黑
-                    "info": "#8ab4d5",              // 信息提示 - 柔和藍色
-                    "info-content": "#ffffff",      // 信息文字
-                    "success": "#88b89d",           // 成功提示 - 柔和綠色
-                    "success-content": "#ffffff",   // 成功文字
-                    "warning": "#d4b896",           // 警告提示 - 柔和橙色
-                    "warning-content": "#4a4a4a",   // 警告文字
-                    "error": "#c99090",             // 錯誤提示 - 柔和紅色
-                    "error-content": "#ffffff",     // 錯誤文字
+                "deep-purple": { // 5. 深紫專業風（高端、現代）- DEFAULT
+                    "primary": "#6D28D9",
+                    "primary-content": "#ffffff",
+                    "secondary": "#A78BFA",
+                    "secondary-content": "#ffffff",
+                    "accent": "#F472B6",
+                    "accent-content": "#ffffff",
+                    "neutral": "#1E1B4B",
+                    "neutral-content": "#ffffff",
+                    "base-100": "#F5F3FF",
+                    "base-200": "#EDE9FE",
+                    "base-300": "#DDD6FE",
+                    "base-content": "#1E1B4B",
+                    "info": "#3ABFF8",
+                    "success": "#36D399",
+                    "warning": "#FBBD23",
+                    "error": "#F87272",
+                },
+                "deep-blue": { // 1. 深藍企業風（穩重、安全）
+                    "primary": "#1E3A8A",
+                    "primary-content": "#ffffff",
+                    "secondary": "#3B82F6",
+                    "secondary-content": "#ffffff",
+                    "accent": "#10B981",
+                    "accent-content": "#ffffff",
+                    "neutral": "#111827",
+                    "neutral-content": "#ffffff",
+                    "base-100": "#F3F4F6",
+                    "base-200": "#E5E7EB",
+                    "base-300": "#D1D5DB",
+                    "base-content": "#111827",
+                    "info": "#3ABFF8",
+                    "success": "#36D399",
+                    "warning": "#FBBD23",
+                    "error": "#F87272",
+                },
+                "carbon-gray": { // 2. 碳灰科技風（低調、專業）
+                    "primary": "#1F2937",
+                    "primary-content": "#ffffff",
+                    "secondary": "#4B5563",
+                    "secondary-content": "#ffffff",
+                    "accent": "#3B82F6",
+                    "accent-content": "#ffffff",
+                    "neutral": "#111827",
+                    "neutral-content": "#ffffff",
+                    "base-100": "#F9FAFB",
+                    "base-200": "#F3F4F6",
+                    "base-300": "#E5E7EB",
+                    "base-content": "#111827",
+                    "info": "#3ABFF8",
+                    "success": "#36D399",
+                    "warning": "#FBBD23",
+                    "error": "#F87272",
+                },
+                "platinum": { // 3. 白金極簡風（乾淨、商務）
+                    "primary": "#2563EB",
+                    "primary-content": "#ffffff",
+                    "secondary": "#6B7280",
+                    "secondary-content": "#ffffff",
+                    "accent": "#F59E0B",
+                    "accent-content": "#ffffff",
+                    "neutral": "#1F2937",
+                    "neutral-content": "#ffffff",
+                    "base-100": "#FFFFFF",
+                    "base-200": "#F9FAFB",
+                    "base-300": "#F3F4F6",
+                    "base-content": "#1F2937",
+                    "info": "#3ABFF8",
+                    "success": "#36D399",
+                    "warning": "#FBBD23",
+                    "error": "#F87272",
+                },
+                "turquoise": { // 4. 綠松石商務風（清晰、柔和）
+                    "primary": "#0D9488",
+                    "primary-content": "#ffffff",
+                    "secondary": "#14B8A6",
+                    "secondary-content": "#ffffff",
+                    "accent": "#06B6D4",
+                    "accent-content": "#ffffff",
+                    "neutral": "#0F172A",
+                    "neutral-content": "#ffffff",
+                    "base-100": "#ECFDF5",
+                    "base-200": "#D1FAE5",
+                    "base-300": "#A7F3D0",
+                    "base-content": "#0F172A",
+                    "info": "#3ABFF8",
+                    "success": "#36D399",
+                    "warning": "#FBBD23",
+                    "error": "#F87272",
                 },
             },
-            "light", // 保留原始 light 主題作為備選
-            "dark", "cupcake", "bumblebee", "emerald", "corporate", "synthwave", "retro", "cyberpunk", "valentine", "halloween", "garden", "forest", "aqua", "lofi", "pastel", "fantasy", "wireframe", "black", "luxury", "dracula", "cmyk", "autumn", "business", "acid", "lemonade", "night", "coffee", "winter"
         ],
     },
 }

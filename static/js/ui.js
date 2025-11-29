@@ -73,3 +73,28 @@ function updateModelOptions() {
         apiTypeHint.textContent = '模擬模式,不調用真實 API,用於測試';
     }
 }
+
+/**
+ * 切換 UI 主題
+ * @param {string} themeName - 主題名稱
+ */
+function changeTheme(themeName) {
+    document.documentElement.setAttribute('data-theme', themeName);
+    localStorage.setItem('ui-theme', themeName);
+}
+
+// 初始化主題
+document.addEventListener('DOMContentLoaded', () => {
+    // 讀取保存的主題或使用預設值 (deep-purple)
+    const savedTheme = localStorage.getItem('ui-theme') || 'deep-purple';
+    changeTheme(savedTheme);
+
+    // 設置下拉選單的值並添加監聽器
+    const themeSelector = document.getElementById('theme-selector');
+    if (themeSelector) {
+        themeSelector.value = savedTheme;
+        themeSelector.addEventListener('change', (e) => {
+            changeTheme(e.target.value);
+        });
+    }
+});
