@@ -47,6 +47,9 @@ def verify_password():
             return jsonify({"success": False, "message": "密碼錯誤"}), 401
             
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Error in inject_images: {error_details}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 @bp.route('/api/upload_template', methods=['POST'])
@@ -714,3 +717,70 @@ def extract_text():
             
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
+@bp.route('/api/stage_image', methods=['POST'])
+def stage_image():
+    """暫存圖片用於後續注入"""
+    try:
+        if 'image' not in request.files:
+            return jsonify({"success": False, "error": "沒有上傳圖片"}), 400
+        
+        file = request.files['image']
+        if file.filename == '':
+            return jsonify({"success": False, "error": "文件名為空"}), 400
+        
+        # 創建暫存目錄
+        temp_dir = os.path.join(current_app.config['OUTPUT_FOLDER'], 'temp_images')
+        os.makedirs(temp_dir, exist_ok=True)
+        
+        # 保存文件
+        filename = safe_filename(file.filename)
+        timestamp = int(time.time() * 1000)
+        unique_filename = f"{timestamp}_{filename}"
+        file_path = os.path.join(temp_dir, unique_filename)
+        file.save(file_path)
+        
+        return jsonify({
+            "success": True,
+            "filename": unique_filename,
+            "path": file_path
+        })
+        
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@bp.route('/api/inject_images', methods=['POST'])
+def inject_images():
+    """將圖片注入到指定的 PPTX 文件"""
+    try:
+        from .services.ppt_injector import PPTXInjector
+        
+        data = request.json
+        source_filename = data.get('filename')
+        injections = data.get('injections', [])
+        
+        if not source_filename:
+            return jsonify({"success": False, "error": "未指定源文件"}), 400
+        
+        if not injections:
+            return jsonify({"success": False, "error": "未指定圖片注入配置"}), 400
+        
+        # 構建源文件路徑
+        source_path = os.path.join(current_app.config['OUTPUT_FOLDER'], source_filename)
+        
+        if not os.path.exists(source_path):
+            return jsonify({"success": False, "error": "源文件不存在"}), 404
+        
+        # 執行圖片注入
+        output_path = PPTXInjector.inject_images(source_path, injections)
+        output_filename = os.path.basename(output_path)
+        
+        return jsonify({
+            "success": True,
+            "filename": output_filename,
+            "download_url": f"/api/download/{output_filename}"
+        })
+        
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+

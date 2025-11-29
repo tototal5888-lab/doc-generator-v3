@@ -1,0 +1,367 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI文檔生成器 V3.0 - 專業版</title>
+
+    <!-- Favicon and App Icons -->
+    <link rel="icon" type="image/png" href="/static/icon.png">
+    <link rel="apple-touch-icon" href="/static/icon.png">
+    <link rel="shortcut icon" type="image/png" href="/static/icon.png">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- 模組化 CSS -->
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/components.css">
+    <link rel="stylesheet" href="/static/css/animations.css">
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>
+                <img src="/static/icon.png" alt="AI文檔生成器" class="header-icon">
+                AI文檔生成器
+            </h1>
+            <div class="version">V3.0 專業版 | 多格式輸出</div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('generate', event)">
+                <span>📝</span> 生成文檔
+            </button>
+            <button class="tab" onclick="switchTab('templates', event)">
+                <span>📁</span> 模板管理
+            </button>
+            <button class="tab" onclick="switchTab('documents', event)">
+                <span>📚</span> 文檔記錄
+            </button>
+            <button class="tab" onclick="switchTab('config', event)">
+                <span>🤖</span> 模型設定
+            </button>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- 生成文檔 Tab -->
+            <div id="generate-tab" class="tab-content active full-width">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                    <!-- 左側：配置 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon">📝</span>
+                            <h2 class="card-title">文檔配置</h2>
+                        </div>
+
+                        <div id="generate-alert" class="alert"></div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <span class="form-label-icon">📋</span>
+                                文檔類型
+                            </label>
+                            <select id="doc-type" class="form-control">
+                                <option value="">請選擇文檔類型...</option>
+                                <option value="system_doc">1. 系統文檔</option>
+                                <option value="sop">2. SOP標準作業程序</option>
+                                <option value="technical_report">3. 技術報告</option>
+                                <option value="sop_optimize">4. 🔄 SOP優化（風格統一）</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <span class="form-label-icon">📄</span>
+                                選擇模板
+                            </label>
+                            <select id="template-select" class="form-control">
+                                <option value="">請先上傳模板...</option>
+                            </select>
+                        </div>
+
+                        <!-- 舊文檔上傳區域（僅在 SOP 優化時顯示） -->
+                        <div id="old-doc-upload-section" class="form-group" style="display: none;">
+                            <label class="form-label">
+                                <span class="form-label-icon">📤</span>
+                                上傳舊文檔（可選）
+                            </label>
+                            <div id="old-doc-drop-area" class="upload-area"
+                                style="padding: 30px 20px; cursor: pointer;">
+                                <input type="file" id="old-doc-input" style="display: none;"
+                                    accept=".pdf,.docx,.doc,.pptx,.ppt,.txt,.md">
+                                <span class="upload-icon" style="font-size: 2.5rem;">📄</span>
+                                <div class="upload-text">拖放文件到此處或點擊選擇</div>
+                                <div class="upload-hint">支持：PDF, DOCX, DOC, PPTX, PPT, TXT, MD</div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <span class="form-label-icon">💬</span>
+                                <span id="requirements-label">需求描述</span>
+                            </label>
+                            <textarea id="requirements" class="form-control"
+                                placeholder="請描述您的具體需求...&#10;&#10;提示：如選擇「SOP優化」，請在此貼上舊的 SOP 內容" rows="5"></textarea>
+
+                            <!-- AI 優化按鈕 -->
+                            <div style="margin-top: 10px; text-align: right;">
+                                <button type="button" id="optimize-btn"
+                                    style="padding: 8px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
+                                    <span id="optimize-btn-text">✨ AI 優化需求</span>
+                                    <span id="optimize-btn-loading" style="display: none;">⏳ 優化中...</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- AI 優化結果區域 (預設隱藏) -->
+                        <div class="form-group" id="optimized-section" style="display: none;">
+                            <label class="form-label">
+                                <span class="form-label-icon">✨</span>
+                                <span>AI 優化後的需求 (可編輯)</span>
+                            </label>
+                            <textarea id="optimized-requirements" class="form-control" placeholder="優化後的需求描述將顯示在這裡..."
+                                rows="8"></textarea>
+
+                            <div style="margin-top: 10px; display: flex; gap: 10px;">
+                                <button type="button" id="use-optimized-btn" class="btn-primary"
+                                    style="padding: 8px 20px;">
+                                    ✅ 使用優化後的需求
+                                </button>
+                                <button type="button" id="cancel-optimized-btn" class="btn-secondary"
+                                    style="padding: 8px 20px;">
+                                    ❌ 取消
+                                </button>
+                                <button type="button" id="revert-original-btn" class="btn-secondary"
+                                    style="padding: 8px 20px;">
+                                    ↩️ 恢復原始需求
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <span class="form-label-icon">🎨</span>
+                                輸出格式
+                            </label>
+                            <div class="format-selector" id="format-selector">
+                                <div class="format-option">
+                                    <input type="radio" name="format" id="format-docx" value="docx">
+                                    <label for="format-docx">
+                                        <span class="format-icon">📄</span>
+                                        <span class="format-name">Word</span>
+                                    </label>
+                                </div>
+                                <div class="format-option">
+                                    <input type="radio" name="format" id="format-pptx" value="pptx" checked>
+                                    <label for="format-pptx">
+                                        <span class="format-icon">📊</span>
+                                        <span class="format-name">PowerPoint</span>
+                                    </label>
+                                </div>
+                                <div class="format-option">
+                                    <input type="radio" name="format" id="format-pdf" value="pdf">
+                                    <label for="format-pdf">
+                                        <span class="format-icon">📕</span>
+                                        <span class="format-name">PDF</span>
+                                    </label>
+                                </div>
+                                <div class="format-option">
+                                    <input type="radio" name="format" id="format-md" value="md">
+                                    <label for="format-md">
+                                        <span class="format-icon">📝</span>
+                                        <span class="format-name">Markdown</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 12px; margin-top: 30px;">
+                            <button id="generate-btn" class="btn btn-primary" style="flex: 1;"
+                                onclick="generateDocument()">
+                                ✨ 生成文檔
+                            </button>
+                            <button class="btn btn-secondary" onclick="clearForm()">
+                                🔄 清空
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 右側：結果 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon">📦</span>
+                            <h2 class="card-title">生成結果</h2>
+                        </div>
+
+                        <div id="result-section" style="display: none;">
+                            <div id="result-content"></div>
+                        </div>
+
+                        <div id="no-result" style="text-align: center; padding: 60px 20px; color: #94a3b8;">
+                            <div style="font-size: 4rem; margin-bottom: 20px;">📭</div>
+                            <div style="font-size: 1.1rem; font-weight: 600;">尚未生成文檔</div>
+                            <div style="font-size: 0.9rem; margin-top: 8px;">完成左側配置後點擊生成按鈕</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 模板管理 Tab -->
+            <div id="templates-tab" class="tab-content full-width">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                    <!-- 上傳模板 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon">📤</span>
+                            <h2 class="card-title">上傳模板</h2>
+                        </div>
+
+                        <div id="upload-alert" class="alert"></div>
+
+                        <div class="upload-area" id="upload-area"
+                            onclick="document.getElementById('file-input').click()">
+                            <input type="file" id="file-input" style="display: none;"
+                                accept=".pdf,.docx,.doc,.pptx,.ppt,.txt" onchange="uploadTemplate()">
+                            <span class="upload-icon">☁️</span>
+                            <div class="upload-text">點擊或拖放文件上傳</div>
+                            <div class="upload-hint">支持：PDF, DOCX, DOC, PPTX, PPT, TXT</div>
+                        </div>
+                    </div>
+
+                    <!-- 模板列表 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon">📁</span>
+                            <h2 class="card-title">已上傳模板</h2>
+                        </div>
+
+                        <div id="template-list" class="template-list"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 文檔記錄 Tab -->
+            <div id="documents-tab" class="tab-content full-width">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon">📚</span>
+                        <h2 class="card-title">生成記錄</h2>
+                    </div>
+
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding: 0 10px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="select-all-docs" onchange="toggleSelectAll()">
+                            <span style="font-weight: 600;">全選</span>
+                        </label>
+                        <button id="batch-delete-btn" class="btn btn-danger btn-sm" onclick="batchDeleteDocuments()"
+                            style="display: none;">
+                            🗑️ 刪除選中項
+                        </button>
+                    </div>
+                    <div id="document-list" class="document-list"></div>
+                </div>
+            </div>
+
+
+            <!-- 模型設定 Tab -->
+            <div id="config-tab" class="tab-content full-width">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon">🤖</span>
+                        <h2 class="card-title">AI 模型設定</h2>
+                    </div>
+
+                    <div id="config-alert" class="alert"></div>
+
+                    <div
+                        style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.05)); 
+                                padding: 20px; border-radius: 12px; margin-bottom: 25px; border-left: 4px solid var(--primary);">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
+                            <span style="font-size: 1.5rem;">ℹ️</span>
+                            <strong style="color: var(--dark);">API 密鑰管理說明</strong>
+                        </div>
+                        <p style="color: #64748b; margin: 0; line-height: 1.6;">
+                            API 密鑰現在由 <code
+                                style="background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px;">.env</code>
+                            文件統一管理。
+                            請在伺服器端的 <code
+                                style="background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px;">.env</code>
+                            文件中配置
+                            <code
+                                style="background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px;">GEMINI_API_KEY</code>
+                            和
+                            <code
+                                style="background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px;">OPENAI_API_KEY</code>。
+                        </p>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <span class="form-label-icon">🤖</span>
+                            AI 引擎選擇
+                        </label>
+                        <select id="api-type" class="form-control" onchange="updateModelOptions()">
+                            <option value="gemini">Google Gemini 2.0 Flash (免費額度高)</option>
+                            <option value="openai">OpenAI GPT (需付費)</option>
+                            <option value="mock">模擬環境 (測試用)</option>
+                        </select>
+                        <div style="margin-top: 8px; font-size: 0.9rem; color: #64748b;">
+                            <span id="api-type-hint">選擇要使用的 AI 引擎</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group" id="openai-model-group">
+                        <label class="form-label">
+                            <span class="form-label-icon">🎯</span>
+                            OpenAI 模型
+                        </label>
+                        <select id="openai-model" class="form-control">
+                            <option value="gpt-4o">GPT-4o (最新、最強)</option>
+                            <option value="gpt-4o-mini" selected>GPT-4o Mini (推薦、性價比高)</option>
+                            <option value="gpt-4-turbo">GPT-4 Turbo (強大)</option>
+                            <option value="gpt-4">GPT-4 (經典)</option>
+                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo (便宜)</option>
+                        </select>
+                        <div style="margin-top: 8px; font-size: 0.9rem; color: #64748b;">
+                            <span id="model-hint">僅在選擇 OpenAI 引擎時生效</span>
+                        </div>
+                    </div>
+
+                    <button id="save-config-btn" class="btn btn-primary" onclick="saveModelConfig()">
+                        💾 保存設定
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模板檢視模態框 -->
+    <div id="template-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-template-name">模板內容</h3>
+                <button class="modal-close" onclick="closeTemplateModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div id="modal-template-content" class="template-content">載入中...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模組化 JavaScript -->
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/ui.js"></script>
+    <script src="/static/js/config.js"></script>
+    <script src="/static/js/templates.js"></script>
+    <script src="/static/js/documents.js"></script>
+    <script src="/static/js/generate.js"></script>
+</body>
+
+</html>

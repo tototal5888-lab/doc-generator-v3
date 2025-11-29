@@ -42,6 +42,9 @@
             <a role="tab" class="tab tab-active" onclick="switchTab('generate', event)">
                 <span class="mr-2">📝</span> 生成文檔
             </a>
+            <a role="tab" class="tab" onclick="switchTab('optimize', event)">
+                <span class="mr-2">🎨</span> 優化簡報
+            </a>
             <a role="tab" class="tab" onclick="switchTab('templates', event)">
                 <span class="mr-2">📁</span> 模板管理
             </a>
@@ -291,6 +294,52 @@
                 </div>
             </div>
 
+            <!-- 優化簡報 Tab -->
+            <div id="optimize-tab" class="tab-content">
+                <div class="card bg-base-100 shadow-xl max-w-5xl mx-auto">
+                    <div class="card-body">
+                        <h2 class="card-title gap-2 mb-4">
+                            <span>🎨</span> 優化簡報 - 圖片注入
+                        </h2>
+
+                        <div id="optimize-alert" class="alert hidden mb-4"></div>
+
+                        <!-- 選擇源文件 -->
+                        <div class="form-control w-full mb-4">
+                            <label class="label">
+                                <span class="label-text font-medium">📊 選擇要優化的簡報</span>
+                            </label>
+                            <select id="source-pptx-select" class="select select-bordered w-full">
+                                <option value="">請選擇已生成的 PPTX 文件...</option>
+                            </select>
+                        </div>
+
+                        <!-- 圖片管理區 -->
+                        <div class="form-control w-full mb-4">
+                            <label class="label">
+                                <span class="label-text font-medium">🖼️ 上傳圖片</span>
+                            </label>
+                            <input type="file" id="optimize-image-input" class="file-input file-input-bordered w-full" multiple accept=".jpg,.jpeg,.png,.gif,.webp">
+                        </div>
+
+                        <!-- 圖片列表 -->
+                        <div id="optimize-image-list" class="mb-4">
+                            <div class="text-sm opacity-60 text-center py-8">尚未上傳圖片</div>
+                        </div>
+
+                        <!-- 執行按鈕 -->
+                        <div class="flex gap-3">
+                            <button id="inject-btn" class="btn btn-primary flex-1" onclick="injectImages()" disabled>
+                                ✨ 生成新版本
+                            </button>
+                            <button class="btn btn-outline" onclick="clearOptimizeForm()">
+                                🔄 清空
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- 模型設定 Tab -->
             <div id="config-tab" class="tab-content">
                 <div class="card bg-base-100 shadow-xl max-w-3xl mx-auto">
@@ -403,6 +452,7 @@
     <script src="/static/js/config.js"></script>
     <script src="/static/js/templates.js"></script>
     <script src="/static/js/documents.js"></script>
+    <script src="/static/js/optimize.js"></script>
     <script src="/static/js/generate.js"></script>
 </body>
 

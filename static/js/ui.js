@@ -25,6 +25,11 @@ function switchTab(tabName, event) {
     if (tabName === 'documents') loadGeneratedDocuments();
     if (tabName === 'config') loadConfig();
     if (tabName === 'generate') loadTemplateOptions();
+    if (tabName === 'optimize') {
+        if (typeof loadPPTXFiles === 'function') {
+            loadPPTXFiles();
+        }
+    }
 }
 
 /**
