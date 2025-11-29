@@ -19,7 +19,7 @@ def get_ai_service():
 
 @bp.route('/')
 def index():
-    return render_template('index_v3.html')
+    return render_template('index_v3_daisy.html')
 
 @bp.route('/api/config', methods=['GET', 'POST'])
 def api_config():

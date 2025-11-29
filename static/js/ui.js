@@ -6,10 +6,19 @@
  * @param {Event} event - 事件對象
  */
 function switchTab(tabName, event) {
-    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+        tab.classList.remove('tab-active');
+    });
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
-    if (event && event.target) event.target.closest('.tab').classList.add('active');
+    if (event && event.target) {
+        const tab = event.target.closest('.tab');
+        if (tab) {
+            tab.classList.add('active');
+            tab.classList.add('tab-active');
+        }
+    }
     document.getElementById(tabName + '-tab').classList.add('active');
 
     if (tabName === 'templates') loadTemplates();

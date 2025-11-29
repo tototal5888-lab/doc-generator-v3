@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.tab-content {
+    @apply hidden;
+}
+
+.tab-content.active {
+    @apply block;
+}
+
+/* Format Selector Styles */
+.format-selector {
+    @apply flex flex-wrap gap-2;
+}
+
+.format-option {
+    @apply flex-1 min-w-[100px];
+}
+
+.format-option input[type="radio"] {
+    @apply hidden;
+}
+
+.format-option label {
+    @apply flex flex-col items-center justify-center p-4 border-2 border-gray-300 rounded-lg cursor-pointer transition-all;
+}
+
+.format-option label:hover {
+    @apply border-blue-500 bg-gray-100;
+}
+
+.format-option input[type="radio"]:checked+label {
+    @apply border-blue-500 bg-blue-500 text-white;
+}
+
+/* Custom Styles Migrated from components.css */
+
+/* Upload Area */
+.upload-area {
+    @apply relative p-12 border-2 border-dashed border-primary rounded-xl text-center bg-base-100 transition-all cursor-pointer;
+}
+
+.upload-area:hover {
+    @apply border-secondary transform scale-[1.02];
+}
+
+/* Lists */
+.template-list,
+.document-list {
+    @apply max-h-[400px] overflow-y-auto;
+}
+
+.list-item {
+    @apply flex items-center justify-between p-4 bg-base-100 rounded-xl mb-3 transition-all border-2 border-transparent;
+}
+
+.list-item:hover {
+    @apply border-primary transform translate-x-1;
+}
+
+.list-item-info {
+    @apply flex-1;
+}
+
+.list-item-name {
+    @apply font-semibold text-base-content mb-1;
+}
+
+.list-item-meta {
+    @apply flex gap-4 text-sm text-gray-500;
+}
+
+/* Template Content */
+.template-content {
+    @apply bg-base-200 p-5 rounded-xl font-mono text-sm leading-relaxed whitespace-pre-wrap break-words max-h-[50vh] overflow-y-auto;
+}

@@ -1,0 +1,388 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW" data-theme="soft">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI文檔生成器 V3.0 - 專業版</title>
+
+    <!-- Favicon and App Icons -->
+    <link rel="icon" type="image/png" href="/static/icon.png">
+    <link rel="apple-touch-icon" href="/static/icon.png">
+    <link rel="shortcut icon" type="image/png" href="/static/icon.png">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS & DaisyUI -->
+    <link href="/static/css/tailwind.css" rel="stylesheet">
+
+    <!-- Legacy CSS for custom components -->
+
+</head>
+
+<body class="bg-base-200 min-h-screen font-['Inter']">
+    <div class="container mx-auto p-4 max-w-7xl">
+        <!-- Header -->
+        <div class="navbar bg-base-100 shadow-lg rounded-box mb-6">
+            <div class="flex-1">
+                <a class="btn btn-ghost text-xl normal-case gap-2">
+                    <img src="/static/icon.png" alt="AI文檔生成器" class="w-8 h-8">
+                    <span class="font-semibold">AI文檔生成器</span>
+                </a>
+            </div>
+            <div class="flex-none gap-2">
+                <span class="badge badge-primary">V3.0 專業版</span>
+                <span class="text-xs opacity-70">多格式輸出</span>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div role="tablist" class="tabs tabs-boxed mb-6 bg-base-100 shadow-sm p-2">
+            <a role="tab" class="tab tab-active" onclick="switchTab('generate', event)">
+                <span class="mr-2">📝</span> 生成文檔
+            </a>
+            <a role="tab" class="tab" onclick="switchTab('templates', event)">
+                <span class="mr-2">📁</span> 模板管理
+            </a>
+            <a role="tab" class="tab" onclick="switchTab('documents', event)">
+                <span class="mr-2">📚</span> 文檔記錄
+            </a>
+            <a role="tab" class="tab" onclick="switchTab('config', event)">
+                <span class="mr-2">🤖</span> 模型設定
+            </a>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- 生成文檔 Tab -->
+            <div id="generate-tab" class="tab-content active">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- 左側：配置 -->
+                    <div class="card bg-base-100 shadow-xl">
+                        <div class="card-body">
+                            <h2 class="card-title gap-2 mb-4">
+                                <span>📝</span> 文檔配置
+                            </h2>
+
+                            <div id="generate-alert" class="alert hidden mb-4"></div>
+
+                            <!-- 文檔類型 -->
+                            <div class="form-control w-full mb-4">
+                                <label class="label">
+                                    <span class="label-text flex items-center gap-2 font-medium">
+                                        <span>📋</span> 文檔類型
+                                    </span>
+                                </label>
+                                <select id="doc-type" class="select select-bordered w-full">
+                                    <option value="">請選擇文檔類型...</option>
+                                    <option value="system_doc">1. 系統文檔</option>
+                                    <option value="sop">2. SOP標準作業程序</option>
+                                    <option value="technical_report">3. 技術報告</option>
+                                    <option value="sop_optimize">4. 🔄 SOP優化（風格統一）</option>
+                                </select>
+                            </div>
+
+                            <!-- 選擇模板 -->
+                            <div class="form-control w-full mb-4">
+                                <label class="label">
+                                    <span class="label-text flex items-center gap-2 font-medium">
+                                        <span>📄</span> 選擇模板
+                                    </span>
+                                </label>
+                                <select id="template-select" class="select select-bordered w-full">
+                                    <option value="">請先上傳模板...</option>
+                                </select>
+                            </div>
+
+                            <!-- 舊文檔上傳區域（僅在 SOP 優化時顯示） -->
+                            <div id="old-doc-upload-section" class="form-control w-full mb-4" style="display: none;">
+                                <label class="label">
+                                    <span class="label-text flex items-center gap-2 font-medium">
+                                        <span>📤</span> 上傳舊文檔（可選）
+                                    </span>
+                                </label>
+                                <div id="old-doc-drop-area"
+                                    class="upload-area cursor-pointer p-8 border-2 border-dashed border-base-300 rounded-lg hover:border-primary transition-colors">
+                                    <input type="file" id="old-doc-input" class="hidden"
+                                        accept=".pdf,.docx,.doc,.pptx,.ppt,.txt,.md">
+                                    <div class="text-center">
+                                        <span class="text-5xl">📄</span>
+                                        <div class="mt-2 font-medium">拖放文件到此處或點擊選擇</div>
+                                        <div class="text-sm opacity-60 mt-1">支持：PDF, DOCX, DOC, PPTX, PPT, TXT, MD</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 需求描述 -->
+                            <div class="form-control w-full mb-4">
+                                <label class="label">
+                                    <span class="label-text flex items-center gap-2 font-medium">
+                                        <span>💬</span> <span id="requirements-label">需求描述</span>
+                                    </span>
+                                </label>
+                                <textarea id="requirements" class="textarea textarea-bordered w-full h-32"
+                                    placeholder="請描述您的具體需求...&#10;&#10;提示：如選擇「SOP優化」，請在此貼上舊的 SOP 內容"></textarea>
+
+                                <!-- AI 優化按鈕 -->
+                                <div class="mt-2 text-right">
+                                    <button type="button" id="optimize-btn" class="btn btn-primary btn-sm gap-2">
+                                        <span id="optimize-btn-text">✨ AI 優化需求</span>
+                                        <span id="optimize-btn-loading"
+                                            class="loading loading-spinner loading-sm hidden"></span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- AI 優化結果區域 (預設隱藏) -->
+                            <div id="optimized-section" class="form-control w-full mb-4" style="display: none;">
+                                <label class="label">
+                                    <span class="label-text flex items-center gap-2 font-medium">
+                                        <span>✨</span> AI 優化後的需求 (可編輯)
+                                    </span>
+                                </label>
+                                <textarea id="optimized-requirements" class="textarea textarea-bordered w-full h-48"
+                                    placeholder="優化後的需求描述將顯示在這裡..."></textarea>
+
+                                <div class="flex gap-2 mt-2">
+                                    <button type="button" id="use-optimized-btn" class="btn btn-success btn-sm">
+                                        ✅ 使用優化後的需求
+                                    </button>
+                                    <button type="button" id="cancel-optimized-btn" class="btn btn-outline btn-sm">
+                                        ❌ 取消
+                                    </button>
+                                    <button type="button" id="revert-original-btn" class="btn btn-outline btn-sm">
+                                        ↩️ 恢復原始需求
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- 輸出格式 -->
+                            <div class="form-control w-full mb-4">
+                                <label class="label">
+                                    <span class="label-text flex items-center gap-2 font-medium">
+                                        <span>🎨</span> 輸出格式
+                                    </span>
+                                </label>
+                                <div class="format-selector" id="format-selector">
+                                    <div class="format-option">
+                                        <input type="radio" name="format" id="format-docx" value="docx">
+                                        <label for="format-docx">
+                                            <span class="format-icon">📄</span>
+                                            <span class="format-name">Word</span>
+                                        </label>
+                                    </div>
+                                    <div class="format-option">
+                                        <input type="radio" name="format" id="format-pptx" value="pptx" checked>
+                                        <label for="format-pptx">
+                                            <span class="format-icon">📊</span>
+                                            <span class="format-name">PowerPoint</span>
+                                        </label>
+                                    </div>
+                                    <div class="format-option">
+                                        <input type="radio" name="format" id="format-pdf" value="pdf">
+                                        <label for="format-pdf">
+                                            <span class="format-icon">📕</span>
+                                            <span class="format-name">PDF</span>
+                                        </label>
+                                    </div>
+                                    <div class="format-option">
+                                        <input type="radio" name="format" id="format-md" value="md">
+                                        <label for="format-md">
+                                            <span class="format-icon">📝</span>
+                                            <span class="format-name">Markdown</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 操作按鈕 -->
+                            <div class="flex gap-3 mt-6">
+                                <button id="generate-btn" class="btn btn-primary flex-1" onclick="generateDocument()">
+                                    ✨ 生成文檔
+                                </button>
+                                <button class="btn btn-outline" onclick="clearForm()">
+                                    🔄 清空
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 右側：結果 -->
+                    <div class="card bg-base-100 shadow-xl">
+                        <div class="card-body">
+                            <h2 class="card-title gap-2 mb-4">
+                                <span>📦</span> 生成結果
+                            </h2>
+
+                            <div id="result-section" style="display: none;">
+                                <div id="result-content"></div>
+                            </div>
+
+                            <div id="no-result" class="text-center py-16">
+                                <div class="text-6xl mb-4 opacity-50">📭</div>
+                                <div class="text-lg font-semibold opacity-70">尚未生成文檔</div>
+                                <div class="text-sm opacity-50 mt-2">完成左側配置後點擊生成按鈕</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 模板管理 Tab -->
+            <div id="templates-tab" class="tab-content">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- 上傳模板 -->
+                    <div class="card bg-base-100 shadow-xl">
+                        <div class="card-body">
+                            <h2 class="card-title gap-2 mb-4">
+                                <span>📤</span> 上傳模板
+                            </h2>
+
+                            <div id="upload-alert" class="alert hidden mb-4"></div>
+
+                            <div class="upload-area cursor-pointer p-12 border-2 border-dashed border-base-300 rounded-lg hover:border-primary transition-colors text-center"
+                                id="upload-area" onclick="document.getElementById('file-input').click()">
+                                <input type="file" id="file-input" class="hidden"
+                                    accept=".pdf,.docx,.doc,.pptx,.ppt,.txt" onchange="uploadTemplate()">
+                                <span class="text-6xl">☁️</span>
+                                <div class="mt-4 text-lg font-medium">點擊或拖放文件上傳</div>
+                                <div class="text-sm opacity-60 mt-2">支持：PDF, DOCX, DOC, PPTX, PPT, TXT</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 模板列表 -->
+                    <div class="card bg-base-100 shadow-xl">
+                        <div class="card-body">
+                            <h2 class="card-title gap-2 mb-4">
+                                <span>📁</span> 已上傳模板
+                            </h2>
+
+                            <div id="template-list" class="template-list"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 文檔記錄 Tab -->
+            <div id="documents-tab" class="tab-content">
+                <div class="card bg-base-100 shadow-xl">
+                    <div class="card-body">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="card-title gap-2">
+                                <span>📚</span> 生成記錄
+                            </h2>
+                            <label class="label cursor-pointer gap-2">
+                                <input type="checkbox" id="select-all-docs" class="checkbox checkbox-sm"
+                                    onchange="toggleSelectAll()">
+                                <span class="label-text font-semibold">全選</span>
+                            </label>
+                        </div>
+
+                        <button id="batch-delete-btn" class="btn btn-error btn-sm mb-4" onclick="batchDeleteDocuments()"
+                            style="display: none;">
+                            🗑️ 刪除選中項
+                        </button>
+
+                        <div id="document-list" class="document-list"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 模型設定 Tab -->
+            <div id="config-tab" class="tab-content">
+                <div class="card bg-base-100 shadow-xl max-w-3xl mx-auto">
+                    <div class="card-body">
+                        <h2 class="card-title gap-2 mb-4">
+                            <span>🤖</span> AI 模型設定
+                        </h2>
+
+                        <div id="config-alert" class="alert hidden mb-4"></div>
+
+                        <div class="alert alert-info mb-6">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                class="stroke-current shrink-0 w-6 h-6">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <div>
+                                <h3 class="font-bold">API 密鑰管理說明</h3>
+                                <div class="text-sm">
+                                    API 密鑰現在由 <code class="bg-base-300 px-2 py-1 rounded">.env</code> 文件統一管理。
+                                    請在伺服器端的 <code class="bg-base-300 px-2 py-1 rounded">.env</code> 文件中配置
+                                    <code class="bg-base-300 px-2 py-1 rounded">GEMINI_API_KEY</code> 和
+                                    <code class="bg-base-300 px-2 py-1 rounded">OPENAI_API_KEY</code>。
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- AI 引擎選擇 -->
+                        <div class="form-control w-full mb-4">
+                            <label class="label">
+                                <span class="label-text flex items-center gap-2 font-medium">
+                                    <span>🤖</span> AI 引擎選擇
+                                </span>
+                            </label>
+                            <select id="api-type" class="select select-bordered w-full" onchange="updateModelOptions()">
+                                <option value="gemini">Google Gemini 2.0 Flash (免費額度高)</option>
+                                <option value="openai">OpenAI GPT (需付費)</option>
+                                <option value="mock">模擬環境 (測試用)</option>
+                            </select>
+                            <label class="label">
+                                <span class="label-text-alt" id="api-type-hint">選擇要使用的 AI 引擎</span>
+                            </label>
+                        </div>
+
+                        <!-- OpenAI 模型 -->
+                        <div id="openai-model-group" class="form-control w-full mb-4">
+                            <label class="label">
+                                <span class="label-text flex items-center gap-2 font-medium">
+                                    <span>🎯</span> OpenAI 模型
+                                </span>
+                            </label>
+                            <select id="openai-model" class="select select-bordered w-full">
+                                <option value="gpt-4o">GPT-4o (最新、最強)</option>
+                                <option value="gpt-4o-mini" selected>GPT-4o Mini (推薦、性價比高)</option>
+                                <option value="gpt-4-turbo">GPT-4 Turbo (強大)</option>
+                                <option value="gpt-4">GPT-4 (經典)</option>
+                                <option value="gpt-3.5-turbo">GPT-3.5 Turbo (便宜)</option>
+                            </select>
+                            <label class="label">
+                                <span class="label-text-alt" id="model-hint">僅在選擇 OpenAI 引擎時生效</span>
+                            </label>
+                        </div>
+
+                        <button id="save-config-btn" class="btn btn-primary w-full" onclick="saveModelConfig()">
+                            💾 保存設定
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模板檢視模態框 -->
+    <div id="template-modal" class="modal">
+        <div class="modal-box max-w-4xl">
+            <h3 class="font-bold text-lg mb-4" id="modal-template-name">模板內容</h3>
+            <div id="modal-template-content" class="template-content prose max-w-none">載入中...</div>
+            <div class="modal-action">
+                <button class="btn" onclick="closeTemplateModal()">關閉</button>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+            <button onclick="closeTemplateModal()">close</button>
+        </form>
+    </div>
+
+    <!-- 模組化 JavaScript -->
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/ui.js"></script>
+    <script src="/static/js/config.js"></script>
+    <script src="/static/js/templates.js"></script>
+    <script src="/static/js/documents.js"></script>
+    <script src="/static/js/generate.js"></script>
+</body>
+
+</html>
