@@ -126,6 +126,38 @@ app/
 - ✅ 瀏覽器可快取獨立檔案,提升載入效能
 - ✅ 便於實施程式碼分割和懶載入
 
+#### DaisyUI 主題系統 (2025-11-29 更新)
+
+為提升用戶體驗和視覺舒適度,系統已整合 DaisyUI 並實現 5 款專業主題:
+
+**技術棧更新**:
+- **UI 框架**: DaisyUI 4.12.10 + Tailwind CSS 3.4.1
+- **主題系統**: 5 款自定義專業主題
+- **構建工具**: PostCSS + Autoprefixer
+
+**可用主題**:
+1. **深紫專業風** (預設) - 高端、現代
+   - Primary: `#6D28D9`, Background: `#F5F3FF`, Accent: `#F472B6`
+2. **深藍企業風** - 穩重、安全
+   - Primary: `#1E3A8A`, Background: `#F3F4F6`, Accent: `#10B981`
+3. **碳灰科技風** - 低調、專業
+   - Primary: `#1F2937`, Background: `#F9FAFB`, Accent: `#3B82F6`
+4. **白金極簡風** - 乾淨、商務
+   - Primary: `#2563EB`, Background: `#FFFFFF`, Accent: `#F59E0B`
+5. **綠松石商務風** - 清晰、柔和
+   - Primary: `#0D9488`, Background: `#ECFDF5`, Accent: `#06B6D4`
+
+**主題切換功能**:
+- 位置: 「🤖 模型設定」頁籤中的「🎨 UI 風格」選擇器
+- 實現: `static/js/ui.js` 中的 `changeTheme()` 函數
+- 持久化: 使用 `localStorage` 保存用戶選擇
+- 即時生效: 通過修改 `<html data-theme>` 屬性實現無刷新切換
+
+**配置文件**:
+- `tailwind.config.js`: 定義 5 個自定義主題的完整色彩系統
+- `static/src/input.css`: Tailwind 輸入文件,包含自定義樣式
+- `static/css/tailwind.css`: 編譯後的 CSS (約 107KB)
+
 ---
 
 
