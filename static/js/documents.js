@@ -1,52 +1,85 @@
 // ==================== 文檔記錄相關 ====================
 
+let allDocuments = [];
+let currentFilter = 'all';
+
 /**
  * 載入已生成的文檔
  */
 async function loadGeneratedDocuments() {
     try {
         const response = await fetch(`${API_BASE_URL}/generated_documents`);
-        const documents = await response.json();
-
-        const listElement = document.getElementById('document-list');
-
-        const formatIcons = {
-            'DOCX': '📄',
-            'PPTX': '📊',
-            'PDF': '📕',
-            'MD': '📝'
-        };
-
-        if (documents.length === 0) {
-            listElement.innerHTML = '<div style="text-align: center; padding: 40px; color: #94a3b8;">暫無生成記錄</div>';
-        } else {
-            listElement.innerHTML = documents.map(doc => `
-                <div class="list-item">
-                    <input type="checkbox" class="doc-checkbox" value="${doc.filename}" onchange="updateBatchDeleteButton()" style="margin-right: 12px;">
-                    <div class="list-item-info">
-                        <div class="list-item-name">
-                            ${formatIcons[doc.format] || '📄'} ${doc.filename}
-                        </div>
-                        <div class="list-item-meta">
-                            <span>📦 ${formatFileSize(doc.size)}</span>
-                            <span>📅 ${doc.created}</span>
-                            <span class="badge badge-primary">${doc.format}</span>
-                        </div>
-                    </div>
-                    <div style="display: flex; gap: 8px;">
-                        <a href="${API_BASE_URL}/download/${doc.filename}" class="btn btn-success btn-sm">
-                            ⬇️ 下載
-                        </a>
-                        <button onclick="deleteGeneratedDocument('${doc.filename}')" class="btn btn-danger btn-sm">
-                            🗑️ 刪除
-                        </button>
-                    </div>
-                </div>
-            `).join('');
-        }
+        allDocuments = await response.json();
+        filterDocuments(currentFilter);
     } catch (error) {
         console.error('載入文檔列表失敗:', error);
     }
+}
+
+/**
+ * 篩選文檔
+ * @param {string} filterType - 'all', 'generated', 'optimized'
+ */
+function filterDocuments(filterType) {
+    currentFilter = filterType;
+    let filteredDocs = [];
+
+    if (filterType === 'all') {
+        filteredDocs = allDocuments;
+    } else if (filterType === 'optimized') {
+        // 優化簡報：檔名包含 _v數字.pptx
+        filteredDocs = allDocuments.filter(doc => /_v\d+\.pptx$/i.test(doc.filename));
+    } else if (filterType === 'generated') {
+        // 生成文檔：排除優化簡報
+        filteredDocs = allDocuments.filter(doc => !/_v\d+\.pptx$/i.test(doc.filename));
+    }
+
+    renderDocumentList(filteredDocs);
+}
+
+/**
+ * 渲染文檔列表
+ * @param {Array} documents - 文檔列表
+ */
+function renderDocumentList(documents) {
+    const listElement = document.getElementById('document-list');
+    const formatIcons = {
+        'DOCX': '📄',
+        'PPTX': '📊',
+        'PDF': '📕',
+        'MD': '📝'
+    };
+
+    if (documents.length === 0) {
+        listElement.innerHTML = '<div style="text-align: center; padding: 40px; color: #94a3b8;">暫無符合條件的文檔</div>';
+    } else {
+        listElement.innerHTML = documents.map(doc => `
+            <div class="list-item">
+                <input type="checkbox" class="doc-checkbox" value="${doc.filename}" onchange="updateBatchDeleteButton()" style="margin-right: 12px;">
+                <div class="list-item-info">
+                    <div class="list-item-name">
+                        ${formatIcons[doc.format] || '📄'} ${doc.filename}
+                    </div>
+                    <div class="list-item-meta">
+                        <span>📦 ${formatFileSize(doc.size)}</span>
+                        <span>📅 ${doc.created}</span>
+                        <span class="badge badge-primary">${doc.format}</span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <a href="${API_BASE_URL}/download/${doc.filename}" class="btn btn-success btn-sm">
+                        ⬇️ 下載
+                    </a>
+                    <button onclick="deleteGeneratedDocument('${doc.filename}')" class="btn btn-danger btn-sm">
+                        🗑️ 刪除
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // 重置批量刪除按鈕狀態
+    updateBatchDeleteButton();
 }
 
 /**
