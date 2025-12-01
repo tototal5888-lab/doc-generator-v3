@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系統架構說明 - AI文檔生成器</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/static/icon.png">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS & DaisyUI -->
+    <link href="/static/css/tailwind.css" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            min-height: 100vh;
+        }
+
+        .markdown-content pre {
+            white-space: pre-wrap;
+            font-family: 'Inter', sans-serif;
+            line-height: 1.8;
+            background: #f8fafc;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            border: 1px solid #e2e8f0;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+
+<body class="bg-base-200 min-h-screen p-8">
+    <div class="container mx-auto max-w-5xl">
+        <div class="flex justify-between items-center mb-6">
+            <div class="flex items-center gap-4">
+                <a href="/" class="btn btn-circle btn-ghost">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                </a>
+                <h1 class="text-3xl font-bold text-base-content flex items-center gap-3">
+                    <span class="text-primary">❓</span> 系統架構說明
+                </h1>
+            </div>
+            <a href="/" class="btn btn-primary">返回首頁</a>
+        </div>
+
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <div id="loading" class="flex flex-col items-center justify-center py-20">
+                    <span class="loading loading-spinner loading-lg text-primary"></span>
+                    <p class="mt-4 text-base-content/60">正在載入說明文檔...</p>
+                </div>
+
+                <div id="error" class="alert alert-error hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>載入失敗，請稍後再試。</span>
+                </div>
+
+                <div id="content" class="markdown-content hidden">
+                    <!-- Content will be injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const loadingEl = document.getElementById('loading');
+            const errorEl = document.getElementById('error');
+            const contentEl = document.getElementById('content');
+
+            try {
+                const response = await fetch('/api/help');
+                const data = await response.json();
+
+                if (data.success) {
+                    // Simple text display preserving format
+                    contentEl.innerHTML = `<pre>${data.content}</pre>`;
+                    loadingEl.classList.add('hidden');
+                    contentEl.classList.remove('hidden');
+                } else {
+                    throw new Error(data.error || 'Unknown error');
+                }
+            } catch (err) {
+                console.error('Failed to load help:', err);
+                loadingEl.classList.add('hidden');
+                errorEl.classList.remove('hidden');
+                errorEl.querySelector('span').textContent = `載入失敗: ${err.message}`;
+            }
+        });
+    </script>
+</body>
+
+</html>

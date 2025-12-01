@@ -21,6 +21,30 @@ def get_ai_service():
 def index():
     return render_template('index_v3_daisy.html')
 
+@bp.route('/help')
+def help_page():
+    return render_template('help.html')
+
+@bp.route('/api/help', methods=['GET'])
+def get_help():
+    """獲取幫助文檔內容"""
+    try:
+        help_file_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'PROJECT_ARCHITECTURE.md')
+        
+        if not os.path.exists(help_file_path):
+            return jsonify({"success": False, "error": "幫助文檔不存在"}), 404
+        
+        with open(help_file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        return jsonify({
+            "success": True,
+            "content": content
+        })
+    except Exception as e:
+        current_app.logger.error(f"讀取幫助文檔失敗: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @bp.route('/api/config', methods=['GET', 'POST'])
 def api_config():
     ai_service = get_ai_service()
