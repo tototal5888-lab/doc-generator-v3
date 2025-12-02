@@ -15,6 +15,9 @@
     <!-- Tailwind CSS & DaisyUI -->
     <link href="/static/css/tailwind.css" rel="stylesheet">
 
+    <!-- Marked.js for Markdown rendering (Pinned to 4.3.0 for stability) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js"></script>
+
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -22,22 +25,135 @@
             min-height: 100vh;
         }
 
-        .markdown-content pre {
-            white-space: pre-wrap;
-            font-family: 'Inter', sans-serif;
-            line-height: 1.8;
-            background: #f8fafc;
-            padding: 2rem;
+        /* Custom Markdown Styles */
+        .markdown-body {
+            color: #334155;
+            line-height: 1.7;
+        }
+
+        .markdown-body h1 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-top: 2rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .markdown-body h2 {
+            font-size: 1.875rem;
+            font-weight: 600;
+            color: #334155;
+            margin-top: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .markdown-body h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #475569;
+            margin-top: 2rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .markdown-body p {
+            margin-bottom: 1.25rem;
+        }
+
+        .markdown-body ul,
+        .markdown-body ol {
+            margin-bottom: 1.25rem;
+            padding-left: 1.5rem;
+        }
+
+        .markdown-body ul {
+            list-style-type: disc;
+        }
+
+        .markdown-body ol {
+            list-style-type: decimal;
+        }
+
+        .markdown-body li {
+            margin-bottom: 0.5rem;
+        }
+
+        .markdown-body code {
+            background-color: #f1f5f9;
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.875em;
+            color: #ef4444;
+        }
+
+        .markdown-body pre {
+            background-color: #1e293b;
+            color: #f8fafc;
+            padding: 1.5rem;
             border-radius: 0.5rem;
-            border: 1px solid #e2e8f0;
             overflow-x: auto;
+            margin-bottom: 1.5rem;
+        }
+
+        .markdown-body pre code {
+            background-color: transparent;
+            color: inherit;
+            padding: 0;
+            font-size: 0.9em;
+        }
+
+        .markdown-body blockquote {
+            border-left: 4px solid #6366f1;
+            background-color: #eef2ff;
+            padding: 1rem 1.5rem;
+            border-radius: 0 0.5rem 0.5rem 0;
+            margin-bottom: 1.5rem;
+            font-style: italic;
+            color: #4f46e5;
+        }
+
+        .markdown-body table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1.5rem;
+        }
+
+        .markdown-body th,
+        .markdown-body td {
+            border: 1px solid #e2e8f0;
+            padding: 0.75rem;
+            text-align: left;
+        }
+
+        .markdown-body th {
+            background-color: #f8fafc;
+            font-weight: 600;
+        }
+
+        .markdown-body a {
+            color: #6366f1;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+
+        .markdown-body a:hover {
+            color: #4f46e5;
+        }
+
+        .markdown-body hr {
+            border: 0;
+            border-top: 1px solid #cbd5e1;
+            margin: 2rem 0;
         }
     </style>
 </head>
 
 <body class="bg-base-200 min-h-screen p-8">
     <div class="container mx-auto max-w-5xl">
-        <div class="flex justify-between items-center mb-6">
+        <div
+            class="flex justify-between items-center mb-6 sticky top-0 bg-base-200/95 backdrop-blur z-10 py-4 border-b border-base-300">
             <div class="flex items-center gap-4">
                 <a href="/" class="btn btn-circle btn-ghost">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
@@ -69,28 +185,88 @@
                     <span>載入失敗，請稍後再試。</span>
                 </div>
 
-                <div id="content" class="markdown-content hidden">
+                <div id="content" class="markdown-body hidden px-4 pb-8">
                     <!-- Content will be injected here -->
                 </div>
             </div>
         </div>
+
+        <div class="text-center mt-8 text-base-content/50 text-sm">
+            &copy; 2024 AI文檔生成器 V3.0
+        </div>
     </div>
+
+    <!-- Back to Top Button -->
+    <button id="backToTop" class="btn btn-circle btn-primary fixed bottom-8 right-8 shadow-lg z-[9999]"
+        style="opacity: 0.3; transition: all 0.3s;" title="回到頂部">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+        </svg>
+    </button>
 
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             const loadingEl = document.getElementById('loading');
             const errorEl = document.getElementById('error');
             const contentEl = document.getElementById('content');
+            const backToTopBtn = document.getElementById('backToTop');
+
+            // Back to Top functionality
+            const handleScroll = () => {
+                const scrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
+                if (scrollTop > 100) {
+                    backToTopBtn.style.opacity = '1';
+                    backToTopBtn.style.transform = 'scale(1.1)';
+                    backToTopBtn.style.cursor = 'pointer';
+                } else {
+                    backToTopBtn.style.opacity = '0.3';
+                    backToTopBtn.style.transform = 'scale(1)';
+                    backToTopBtn.style.cursor = 'default';
+                }
+            };
+
+            window.addEventListener('scroll', handleScroll, { passive: true });
+
+            // Initial check
+            handleScroll();
+
+            backToTopBtn.addEventListener('click', () => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+
+            // Configure marked to generate IDs for headings compatible with the TOC
+            const renderer = new marked.Renderer();
+            renderer.heading = function (text, level) {
+                // Ensure text is a string and remove HTML tags
+                const safeText = String(text || '');
+                const id = safeText.replace(/<[^>]+>/g, '');
+                return `<h${level} id="${id}">${safeText}</h${level}>`;
+            };
+
+            marked.setOptions({
+                renderer: renderer,
+                breaks: true, // Enable line breaks
+                gfm: true     // Enable GitHub Flavored Markdown
+            });
 
             try {
                 const response = await fetch('/api/help');
                 const data = await response.json();
 
                 if (data.success) {
-                    // Simple text display preserving format
-                    contentEl.innerHTML = `<pre>${data.content}</pre>`;
+                    // Use marked to parse Markdown to HTML
+                    contentEl.innerHTML = marked.parse(data.content);
                     loadingEl.classList.add('hidden');
                     contentEl.classList.remove('hidden');
+
+                    // Handle hash navigation if page loaded with a hash
+                    if (window.location.hash) {
+                        const id = decodeURIComponent(window.location.hash.substring(1));
+                        const element = document.getElementById(id);
+                        if (element) {
+                            setTimeout(() => element.scrollIntoView(), 100);
+                        }
+                    }
                 } else {
                     throw new Error(data.error || 'Unknown error');
                 }

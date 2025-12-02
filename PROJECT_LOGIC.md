@@ -28,6 +28,7 @@
     - **圖片注入**：後處理（Post-Processing）方式將圖片精確插入指定頁面
 - 💰 **成本追蹤**：自動記錄所有 AI 請求的 token 使用量和成本
 - 🎨 **現代化 UI**：專業的漸層設計與動畫效果，支持多主題切換
+- ❓ **即時說明**：獨立的系統架構說明頁面，支持 Markdown 渲染與目錄導航
 - 🔒 **安全管理**：密碼保護的 API 設定頁面
 
 ---
@@ -82,6 +83,13 @@
 - 密碼保護的設定頁面
 - UI 主題切換
 
+### 7. 系統說明 (新功能)
+
+- **獨立頁面**：`/help` 路由提供完整的系統架構說明
+- **動態加載**：從後端 API 獲取 Markdown 內容並前端渲染
+- **目錄導航**：自動生成目錄，支持點擊跳轉
+- **回到頂部**：長文檔友好的懸浮按鈕
+
 ---
 
 ## 技術架構
@@ -113,7 +121,9 @@ app/
 #### 模組化結構
 
 **HTML 檔案**:
+**HTML 檔案**:
 - `templates/index_v3_daisy.html` - 主界面 (整合 DaisyUI)
+- `templates/help.html` - 系統說明頁面 (獨立，使用 marked.js)
 
 **CSS 模組** (`static/css/`):
 - `main.css` - 基礎樣式
@@ -189,6 +199,8 @@ graph TD
 | `/api/generate` | POST | 生成文檔 | 根據需求生成文檔 |
 | `/api/templates` | GET | 獲取模板列表 | 返回所有已上傳模板 |
 | `/api/history` | GET | 獲取生成記錄 | 返回所有生成的文檔 |
+| `/help` | GET | 說明頁面 | 渲染系統架構說明頁面 |
+| `/api/help` | GET | 獲取說明內容 | 返回 PROJECT_ARCHITECTURE.md 的內容 |
 | `/api/stage_image` | POST | 圖片暫存 | 上傳圖片用於後續注入 (新) |
 | `/api/inject_images` | POST | 圖片注入 | 將圖片插入 PPTX 指定頁面 (新) |
 
@@ -301,7 +313,8 @@ doc_generator_v3/
 │   │   └── ...
 │   └── routes.py              # API 路由
 ├── templates/
-│   └── index_v3_daisy.html    # 主界面
+│   ├── index_v3_daisy.html    # 主界面
+│   └── help.html              # 說明頁面
 ├── static/
 │   ├── js/
 │   │   ├── optimize.js        # 圖片注入前端邏輯
