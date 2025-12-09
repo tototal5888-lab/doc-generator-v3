@@ -496,7 +496,8 @@ def generate_document():
         if output_format == 'docx':
             docx_filename = f"{base_filename}.docx"
             docx_path = os.path.join(output_folder, docx_filename)
-            doc = FormatConverter.markdown_to_docx(generated_content, doc_config)
+            # 傳遞模板路徑，讓生成的文檔繼承模板的樣式和背景
+            doc = FormatConverter.markdown_to_docx(generated_content, doc_config, template_path)
             doc.save(docx_path)
             result_files['docx'] = docx_filename
             download_file = docx_filename
@@ -514,7 +515,8 @@ def generate_document():
             else:
                 print(f"[DEBUG] 沒有收到 image_folder_name")
             
-            prs = FormatConverter.markdown_to_pptx(generated_content, doc_config, image_folder_path)
+            # 傳遞模板路徑，讓生成的簡報繼承模板的母片樣式和背景
+            prs = FormatConverter.markdown_to_pptx(generated_content, doc_config, image_folder_path, template_path)
             prs.save(pptx_path)
             result_files['pptx'] = pptx_filename
             download_file = pptx_filename
