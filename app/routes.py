@@ -5,6 +5,7 @@ from flask import Blueprint, render_template, request, jsonify, send_file, curre
 from werkzeug.utils import secure_filename
 from .utils.helpers import safe_filename
 from .services import FileProcessor, FormatConverter, AIService
+from .services.kroki_service import KrokiService
 
 bp = Blueprint('main', __name__)
 
@@ -806,5 +807,138 @@ def inject_images():
         })
         
     except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ============= 流程圖生成 API =============
+
+def get_kroki_service():
+    """獲取 Kroki 服務實例"""
+    if not hasattr(current_app, 'kroki_service'):
+        output_folder = current_app.config['OUTPUT_FOLDER']
+        current_app.kroki_service = KrokiService(output_folder)
+    return current_app.kroki_service
+
+
+@bp.route('/api/generate-mermaid', methods=['POST'])
+def generate_mermaid():
+    """使用 AI 將流程描述轉換為 Mermaid code"""
+    try:
+        data = request.json
+        description = data.get('description', '').strip()
+        
+        if not description:
+            return jsonify({"success": False, "error": "流程描述不能為空"}), 400
+        
+        # 獲取服務
+        ai_service = get_ai_service()
+        kroki_service = get_kroki_service()
+        
+        # 生成 prompt
+        prompt = kroki_service.generate_mermaid_prompt(description)
+        
+        # 調用 AI 生成 Mermaid code
+        mermaid_code, usage_info = ai_service.generate_content(prompt)
+        
+        # 清理 mermaid code
+        clean_code = mermaid_code.strip()
+        if clean_code.startswith("```mermaid"):
+            clean_code = clean_code[len("```mermaid"):].strip()
+        if clean_code.startswith("```"):
+            clean_code = clean_code[3:].strip()
+        if clean_code.endswith("```"):
+            clean_code = clean_code[:-3].strip()
+        
+        return jsonify({
+            "success": True,
+            "mermaid_code": clean_code,
+            "usage": usage_info
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"生成 Mermaid code 失敗: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@bp.route('/api/generate-flowchart', methods=['POST'])
+def generate_flowchart():
+    """將 Mermaid code 轉換為 PNG 流程圖"""
+    try:
+        data = request.json
+        mermaid_code = data.get('mermaid_code', '').strip()
+        
+        if not mermaid_code:
+            return jsonify({"success": False, "error": "Mermaid code 不能為空"}), 400
+        
+        # 獲取 Kroki 服務
+        kroki_service = get_kroki_service()
+        
+        # 生成流程圖
+        result = kroki_service.generate_flowchart(mermaid_code)
+        
+        if result['success']:
+            return jsonify({
+                "success": True,
+                "filename": result['filename'],
+                "download_url": f"/api/download/{result['filename']}"
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "error": result['error']
+            }), 500
+            
+    except Exception as e:
+        current_app.logger.error(f"生成流程圖失敗: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@bp.route('/api/generate-flowchart-full', methods=['POST'])
+def generate_flowchart_full():
+    """完整流程：從描述直接生成 PNG 流程圖"""
+    try:
+        data = request.json
+        description = data.get('description', '').strip()
+        
+        if not description:
+            return jsonify({"success": False, "error": "流程描述不能為空"}), 400
+        
+        # 獲取服務
+        ai_service = get_ai_service()
+        kroki_service = get_kroki_service()
+        
+        # 1. 生成 Mermaid code
+        prompt = kroki_service.generate_mermaid_prompt(description)
+        mermaid_code, usage_info = ai_service.generate_content(prompt)
+        
+        # 清理 mermaid code
+        clean_code = mermaid_code.strip()
+        if clean_code.startswith("```mermaid"):
+            clean_code = clean_code[len("```mermaid"):].strip()
+        if clean_code.startswith("```"):
+            clean_code = clean_code[3:].strip()
+        if clean_code.endswith("```"):
+            clean_code = clean_code[:-3].strip()
+        
+        # 2. 轉換為 PNG
+        result = kroki_service.generate_flowchart(clean_code)
+        
+        if result['success']:
+            return jsonify({
+                "success": True,
+                "mermaid_code": clean_code,
+                "filename": result['filename'],
+                "download_url": f"/api/download/{result['filename']}",
+                "usage": usage_info
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "mermaid_code": clean_code,
+                "error": result['error']
+            }), 500
+            
+    except Exception as e:
+        current_app.logger.error(f"生成流程圖失敗: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 

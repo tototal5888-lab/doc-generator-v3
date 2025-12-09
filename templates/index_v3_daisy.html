@@ -49,6 +49,9 @@
             <a role="tab" class="tab" onclick="switchTab('config', event)">
                 <span class="mr-2">🤖</span> 模型設定
             </a>
+            <a role="tab" class="tab" onclick="switchTab('flowchart', event)">
+                <span class="mr-2">📊</span> 流程圖
+            </a>
         </div>
 
         <!-- Main Content -->
@@ -443,6 +446,79 @@
     </div>
     </div>
 
+    <!-- 流程圖 Tab -->
+    <div id="flowchart-tab" class="tab-content">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- 左側：輸入與設定 -->
+            <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                    <h2 class="card-title gap-2 mb-4">
+                        <span>📊</span> 流程圖生成器
+                    </h2>
+
+                    <div id="flowchart-alert" class="alert hidden mb-4"></div>
+
+                    <!-- 流程描述 -->
+                    <div class="form-control w-full mb-4">
+                        <label class="label">
+                            <span class="label-text flex items-center gap-2 font-medium">
+                                <span>📝</span> 流程描述
+                            </span>
+                        </label>
+                        <textarea id="flowchart-description" class="textarea textarea-bordered w-full h-32"
+                            placeholder="請描述您的流程...&#10;&#10;範例：登入流程：輸入帳號密碼 → 驗證 → 成功則進入首頁，失敗則顯示錯誤訊息"></textarea>
+                    </div>
+
+                    <!-- 操作按鈕 -->
+                    <div class="flex gap-3 mb-4">
+                        <button class="btn btn-primary flex-1" onclick="generateMermaidCode()"
+                            id="generate-mermaid-btn">
+                            <span id="generate-mermaid-text">✨ 生成 Mermaid Code</span>
+                            <span id="generate-mermaid-loading"
+                                class="loading loading-spinner loading-sm hidden"></span>
+                        </button>
+                        <button class="btn btn-success" onclick="generateFlowchartPNG()" id="generate-png-btn">
+                            <span id="generate-png-text">🖼️ 生成 PNG</span>
+                            <span id="generate-png-loading" class="loading loading-spinner loading-sm hidden"></span>
+                        </button>
+                    </div>
+
+                    <!-- Mermaid Code -->
+                    <div class="form-control w-full">
+                        <label class="label">
+                            <span class="label-text flex items-center gap-2 font-medium">
+                                <span>💻</span> Mermaid Code (可編輯)
+                            </span>
+                        </label>
+                        <textarea id="mermaid-code" class="textarea textarea-bordered w-full h-48 font-mono"
+                            placeholder="Mermaid 語法將顯示在這裡...&#10;&#10;例如：&#10;flowchart TD&#10;    A[開始] --> B[輸入資料]&#10;    B --> C{驗證?}&#10;    C -->|是| D[寫入資料庫]&#10;    D --> E[結束]"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右側：預覽 -->
+            <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                    <h2 class="card-title gap-2 mb-4">
+                        <span>🖼️</span> 流程圖預覽
+                    </h2>
+
+                    <div id="flowchart-preview"
+                        class="min-h-80 bg-base-200 rounded-lg p-4 flex items-center justify-center flex-col text-center">
+                        <span class="text-6xl opacity-50">📊</span>
+                        <p class="mt-4 opacity-70">流程圖將顯示在這裡</p>
+                    </div>
+
+                    <div id="flowchart-download" class="mt-4 hidden">
+                        <a id="flowchart-download-link" class="btn btn-primary w-full" download>
+                            ⬇️ 下載 PNG 圖片
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 模板檢視模態框 -->
     <div id="template-modal" class="modal">
         <div class="modal-box max-w-4xl">
@@ -465,6 +541,7 @@
     <script src="/static/js/documents.js"></script>
     <script src="/static/js/optimize.js"></script>
     <script src="/static/js/generate.js"></script>
+    <script src="/static/js/flowchart.js"></script>
 </body>
 
 </html>
