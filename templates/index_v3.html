@@ -688,6 +688,9 @@
             <button class="tab" onclick="switchTab('config', event)">
                 <span>🤖</span> 模型設定
             </button>
+            <button class="tab" onclick="switchTab('flowchart', event)">
+                <span>📊</span> 流程圖
+            </button>
         </div>
 
         <!-- Main Content -->
@@ -713,7 +716,7 @@
                                 <option value="">請選擇文檔類型...</option>
                                 <option value="system_doc">1. 系統文檔</option>
                                 <option value="sop">2. SOP標準作業程序</option>
-                                <option value="technical_report">3. 技術報告</option>
+                                <option value="work_report">3. 工作報告</option>
                                 <option value="sop_optimize">4. 🔄 SOP優化（風格統一）</option>
                             </select>
                         </div>
@@ -737,10 +740,10 @@
                             <div id="old-doc-drop-area" class="upload-area"
                                 style="padding: 30px 20px; cursor: pointer;">
                                 <input type="file" id="old-doc-input" style="display: none;"
-                                    accept=".pdf,.docx,.doc,.pptx,.ppt,.txt,.md">
+                                    accept=".pdf,.docx,.doc,.pptx,.ppt,.txt,.md,.xls,.xlsx">
                                 <span class="upload-icon" style="font-size: 2.5rem;">📄</span>
                                 <div class="upload-text">拖放文件到此處或點擊選擇</div>
-                                <div class="upload-hint">支持：PDF, DOCX, DOC, PPTX, PPT, TXT, MD</div>
+                                <div class="upload-hint">支持：PDF, DOCX, PPTX, TXT, MD, XLS, XLSX</div>
                             </div>
                         </div>
 
@@ -870,10 +873,10 @@
                         <div class="upload-area" id="upload-area"
                             onclick="document.getElementById('file-input').click()">
                             <input type="file" id="file-input" style="display: none;"
-                                accept=".pdf,.docx,.doc,.pptx,.ppt,.txt" onchange="uploadTemplate()">
+                                accept=".pdf,.docx,.doc,.pptx,.ppt,.txt,.xls,.xlsx" onchange="uploadTemplate()">
                             <span class="upload-icon">☁️</span>
                             <div class="upload-text">點擊或拖放文件上傳</div>
-                            <div class="upload-hint">支持：PDF, DOCX, DOC, PPTX, PPT, TXT</div>
+                            <div class="upload-hint">支持：PDF, DOCX, PPTX, TXT, XLS, XLSX</div>
                         </div>
                     </div>
 
@@ -980,6 +983,90 @@
                     <button id="save-config-btn" class="btn btn-primary" onclick="saveModelConfig()">
                         💾 保存設定
                     </button>
+                </div>
+            </div>
+
+            <!-- 流程圖 Tab -->
+            <div id="flowchart-tab" class="tab-content full-width">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                    <!-- 左側：輸入與設定 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon">📊</span>
+                            <h2 class="card-title">流程圖生成器</h2>
+                        </div>
+
+                        <div id="flowchart-alert" class="alert"></div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <span class="form-label-icon">📝</span>
+                                流程描述
+                            </label>
+                            <textarea id="flowchart-description" class="form-control" rows="6" placeholder="請描述您的流程...
+
+範例：
+登入流程：輸入帳號密碼 → 驗證 → 成功則進入首頁，失敗則顯示錯誤訊息 → 重新輸入"></textarea>
+                        </div>
+
+                        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                            <button class="btn btn-primary" onclick="generateMermaidCode()" id="generate-mermaid-btn">
+                                <span id="generate-mermaid-text">✨ 生成 Mermaid Code</span>
+                                <span id="generate-mermaid-loading" style="display: none;">⏳ 生成中...</span>
+                            </button>
+                            <button class="btn btn-success" onclick="generateFlowchartPNG()" id="generate-png-btn">
+                                <span id="generate-png-text">🖼️ 生成 PNG 圖片</span>
+                                <span id="generate-png-loading" style="display: none;">⏳ 轉換中...</span>
+                            </button>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <span class="form-label-icon">💻</span>
+                                Mermaid Code (可編輯)
+                            </label>
+                            <textarea id="mermaid-code" class="form-control" rows="10" placeholder="Mermaid 語法將顯示在這裡...
+
+例如：
+flowchart TD
+    A[開始] --> B[輸入資料]
+    B --> C{驗證?}
+    C -->|是| D[寫入資料庫]
+    C -->|否| E[顯示錯誤]
+    E --> B
+    D --> F[結束]" style="font-family: 'Courier New', monospace;"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- 右側：預覽 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon">🖼️</span>
+                            <h2 class="card-title">流程圖預覽</h2>
+                        </div>
+
+                        <div id="flowchart-preview" style="
+                            min-height: 400px;
+                            background: var(--light);
+                            border-radius: 12px;
+                            padding: 20px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            flex-direction: column;
+                            text-align: center;
+                            color: #64748b;
+                        ">
+                            <span style="font-size: 4rem; opacity: 0.5;">📊</span>
+                            <p style="margin-top: 15px;">流程圖將顯示在這裡</p>
+                        </div>
+
+                        <div id="flowchart-download" style="margin-top: 20px; display: none;">
+                            <a id="flowchart-download-link" class="btn btn-primary" download>
+                                ⬇️ 下載 PNG 圖片
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1940,6 +2027,102 @@
         window.addEventListener('DOMContentLoaded', () => {
             loadTemplateOptions();
         });
+
+        // ============= 流程圖生成功能 =============
+
+        // 生成 Mermaid Code（透過 AI）
+        async function generateMermaidCode() {
+            const description = document.getElementById('flowchart-description').value.trim();
+
+            if (!description) {
+                showAlert('flowchart-alert', 'error', '❌ 請輸入流程描述');
+                return;
+            }
+
+            // 顯示載入狀態
+            const btn = document.getElementById('generate-mermaid-btn');
+            const textSpan = document.getElementById('generate-mermaid-text');
+            const loadingSpan = document.getElementById('generate-mermaid-loading');
+
+            btn.disabled = true;
+            textSpan.style.display = 'none';
+            loadingSpan.style.display = 'inline';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/generate-mermaid`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ description })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    document.getElementById('mermaid-code').value = result.mermaid_code;
+                    showAlert('flowchart-alert', 'success', '✅ Mermaid Code 生成成功！');
+                } else {
+                    showAlert('flowchart-alert', 'error', '❌ 生成失敗: ' + (result.error || '未知錯誤'));
+                }
+            } catch (error) {
+                showAlert('flowchart-alert', 'error', '❌ 請求失敗: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                textSpan.style.display = 'inline';
+                loadingSpan.style.display = 'none';
+            }
+        }
+
+        // 生成 PNG 流程圖（透過 Kroki）
+        async function generateFlowchartPNG() {
+            const mermaidCode = document.getElementById('mermaid-code').value.trim();
+
+            if (!mermaidCode) {
+                showAlert('flowchart-alert', 'error', '❌ 請先生成或輸入 Mermaid Code');
+                return;
+            }
+
+            // 顯示載入狀態
+            const btn = document.getElementById('generate-png-btn');
+            const textSpan = document.getElementById('generate-png-text');
+            const loadingSpan = document.getElementById('generate-png-loading');
+
+            btn.disabled = true;
+            textSpan.style.display = 'none';
+            loadingSpan.style.display = 'inline';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/generate-flowchart`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mermaid_code: mermaidCode })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // 顯示圖片預覽
+                    const previewDiv = document.getElementById('flowchart-preview');
+                    previewDiv.innerHTML = `<img src="${result.download_url}" alt="流程圖" style="max-width: 100%; border-radius: 8px; box-shadow: var(--shadow);">`;
+
+                    // 顯示下載按鈕
+                    const downloadDiv = document.getElementById('flowchart-download');
+                    const downloadLink = document.getElementById('flowchart-download-link');
+                    downloadLink.href = result.download_url;
+                    downloadLink.download = result.filename;
+                    downloadDiv.style.display = 'block';
+
+                    showAlert('flowchart-alert', 'success', '✅ 流程圖生成成功！');
+                } else {
+                    showAlert('flowchart-alert', 'error', '❌ 生成失敗: ' + (result.error || '未知錯誤'));
+                }
+            } catch (error) {
+                showAlert('flowchart-alert', 'error', '❌ 請求失敗: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                textSpan.style.display = 'inline';
+                loadingSpan.style.display = 'none';
+            }
+        }
     </script>
 </body>
 

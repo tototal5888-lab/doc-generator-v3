@@ -15,6 +15,22 @@ try:
 except ImportError:
     PYMUPDF_AVAILABLE = False
 
+# 可選依賴：openpyxl (用於 XLSX 讀取)
+try:
+    from openpyxl import load_workbook
+    OPENPYXL_AVAILABLE = True
+except ImportError:
+    OPENPYXL_AVAILABLE = False
+
+# 可選依賴：xlrd (用於 XLS 讀取)
+try:
+    import xlrd
+    XLRD_AVAILABLE = True
+    print(f"[INFO] xlrd 已載入，版本: {xlrd.__version__}")
+except ImportError as e:
+    XLRD_AVAILABLE = False
+    print(f"[WARNING] xlrd 載入失敗: {e}")
+
 class FileProcessor:
     """文件處理器 - 處理各種格式的文件讀取"""
     
@@ -134,6 +150,127 @@ class FileProcessor:
             return f"讀取 PPT 失敗: {str(e)}"
 
     @staticmethod
+    def extract_text_from_xlsx(file_path):
+        """從XLSX提取文本"""
+        if not OPENPYXL_AVAILABLE:
+            return "錯誤: 未安裝 openpyxl，無法讀取 XLSX 文件。請執行 pip install openpyxl"
+        
+        try:
+            wb = load_workbook(file_path, data_only=True)
+            all_text = []
+            
+            for sheet_name in wb.sheetnames:
+                sheet = wb[sheet_name]
+                sheet_text = [f"=== 工作表: {sheet_name} ==="]
+                
+                for row in sheet.iter_rows():
+                    row_values = []
+                    for cell in row:
+                        if cell.value is not None:
+                            row_values.append(str(cell.value))
+                    if row_values:
+                        sheet_text.append(" | ".join(row_values))
+                
+                if len(sheet_text) > 1:  # 只有標題的話就跳過
+                    all_text.append("\n".join(sheet_text))
+            
+            wb.close()
+            return "\n\n".join(all_text)
+            
+        except Exception as e:
+            return f"讀取 XLSX 失敗: {str(e)}"
+    
+    @staticmethod
+    def extract_text_from_xls(file_path):
+        """從XLS提取文本（使用 Excel COM 接口）"""
+        # 優先使用 xlrd
+        if XLRD_AVAILABLE:
+            try:
+                wb = xlrd.open_workbook(file_path)
+                all_text = []
+                
+                for sheet_idx in range(wb.nsheets):
+                    sheet = wb.sheet_by_index(sheet_idx)
+                    sheet_text = [f"=== 工作表: {sheet.name} ==="]
+                    
+                    for row_idx in range(sheet.nrows):
+                        row_values = []
+                        for col_idx in range(sheet.ncols):
+                            cell_value = sheet.cell_value(row_idx, col_idx)
+                            if cell_value:
+                                row_values.append(str(cell_value))
+                        if row_values:
+                            sheet_text.append(" | ".join(row_values))
+                    
+                    if len(sheet_text) > 1:
+                        all_text.append("\n".join(sheet_text))
+                
+                return "\n\n".join(all_text)
+                
+            except Exception as e:
+                print(f"[WARNING] xlrd 讀取失敗: {e}")
+        
+        # 備用方案：使用 Excel COM 接口
+        if WIN32_AVAILABLE:
+            excel = None
+            wb = None
+            try:
+                pythoncom.CoInitialize()
+                excel = win32.DispatchEx("Excel.Application")  # 使用 DispatchEx 創建新實例
+                excel.Visible = False
+                excel.DisplayAlerts = False
+                excel.Interactive = False
+                
+                abs_path = os.path.abspath(file_path)
+                wb = excel.Workbooks.Open(abs_path, ReadOnly=True)
+                all_text = []
+                
+                for sheet_idx in range(1, wb.Sheets.Count + 1):
+                    sheet = wb.Sheets(sheet_idx)
+                    sheet_name = sheet.Name
+                    sheet_text = [f"=== 工作表: {sheet_name} ==="]
+                    
+                    # 獲取使用範圍
+                    used_range = sheet.UsedRange
+                    if used_range is not None:
+                        # 一次性讀取所有數據
+                        values = used_range.Value
+                        if values:
+                            # values 可能是單一值或二維 tuple
+                            if isinstance(values, tuple):
+                                for row in values:
+                                    if isinstance(row, tuple):
+                                        row_values = [str(cell) for cell in row if cell is not None]
+                                    else:
+                                        row_values = [str(row)] if row is not None else []
+                                    if row_values:
+                                        sheet_text.append(" | ".join(row_values))
+                            else:
+                                sheet_text.append(str(values))
+                    
+                    if len(sheet_text) > 1:
+                        all_text.append("\n".join(sheet_text))
+                
+                result = "\n\n".join(all_text)
+                return result
+                
+            except Exception as e:
+                return f"讀取 XLS 失敗: {str(e)}"
+            finally:
+                # 確保正確關閉
+                try:
+                    if wb is not None:
+                        wb.Close(False)
+                    if excel is not None:
+                        excel.Quit()
+                        del excel
+                except:
+                    pass
+                pythoncom.CoUninitialize()
+        
+        return "錯誤: 無法讀取 XLS 文件。需要安裝 xlrd 或 pywin32"
+
+    @staticmethod
     def extract_text(file_path):
         """根據文件類型提取文本"""
         ext = file_path.lower().split('.')[-1]
@@ -148,6 +285,10 @@ class FileProcessor:
             return FileProcessor.extract_text_from_pptx(file_path)
         elif ext == 'ppt':
             return FileProcessor.extract_text_from_ppt(file_path)
+        elif ext == 'xlsx':
+            return FileProcessor.extract_text_from_xlsx(file_path)
+        elif ext == 'xls':
+            return FileProcessor.extract_text_from_xls(file_path)
         elif ext == 'txt' or ext == 'md':
             try:
                 with open(file_path, 'r', encoding='utf-8') as f:

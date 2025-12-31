@@ -3,12 +3,190 @@ import re
 from docx import Document
 from pptx import Presentation
 from pptx.util import Inches, Pt
+from pptx.dml.color import RGBColor
+from pptx.enum.text import PP_ALIGN
+from pptx.oxml.xmlchemy import OxmlElement
+
+def SubElement(parent, tagname, **kwargs):
+    element = OxmlElement(tagname)
+    element.attrib.update(kwargs)
+    parent.append(element)
+    return element
+
+def _set_cell_border(cell, border_color="FFFFFF", border_width='12700'):
+    """
+    設定儲存格邊框
+    border_width: 12700 = 1pt
+    """
+    tc = cell._tc
+    tcPr = tc.get_or_add_tcPr()
+    
+    # 設定四邊邊框
+    for border in ['lnL', 'lnR', 'lnT', 'lnB']:
+        ln = SubElement(tcPr, 'a:' + border, w=border_width, cap='flat', cmpd='sng', algn='ctr')
+        solidFill = SubElement(ln, 'a:solidFill')
+        SubElement(solidFill, 'a:srgbClr', val=border_color)
+        SubElement(ln, 'a:prstDash', val='solid')
+        SubElement(ln, 'a:round')
+        SubElement(ln, 'a:headEnd', type='none', w='med', len='med')
+        SubElement(ln, 'a:tailEnd', type='none', w='med', len='med')
+
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+
+
+def parse_markdown_table(lines, start_index):
+    """
+    解析 Markdown 表格
+    
+    Args:
+        lines: 所有文字行
+        start_index: 表格開始的索引
+        
+    Returns:
+        (headers, rows, end_index) 或 (None, None, start_index) 如果不是表格
+    """
+    if start_index >= len(lines):
+        return None, None, start_index
+    
+    first_line = lines[start_index].strip()
+    
+    # 如果是列表項，去除前綴
+    if first_line.startswith('- ') or first_line.startswith('* '):
+        first_line = first_line[2:].strip()
+    
+    # 檢查是否為表格行（包含 |）
+    if '|' not in first_line:
+        return None, None, start_index
+    
+    # 解析表頭
+    headers = [cell.strip() for cell in first_line.split('|') if cell.strip()]
+    
+    # 檢查下一行是否為分隔線（如 |---|---|）
+    if start_index + 1 >= len(lines):
+        return None, None, start_index
+    
+    separator_line = lines[start_index + 1].strip()
+    if not re.match(r'^[\|\s:\-]+$', separator_line):
+        return None, None, start_index
+    
+    # 解析資料行
+    rows = []
+    end_index = start_index + 2
+    
+    while end_index < len(lines):
+        line = lines[end_index].strip()
+        if '|' not in line or line == '' or line.startswith('#'):
+            break
+        cells = [cell.strip() for cell in line.split('|') if cell.strip()]
+        if cells:
+            rows.append(cells)
+        end_index += 1
+    
+    return headers, rows, end_index
+
+
+def create_pptx_table(slide, headers, rows, left=Inches(0.5), top=Inches(1.5), width=Inches(9.0),
+                      header_font_size=Pt(11), content_font_size=Pt(10), column_widths=None):
+    """
+    在投影片中創建原生表格
+    
+    Args:
+        slide: 投影片物件
+        headers: 表頭列表
+        rows: 資料行列表
+        left: 左邊距
+        top: 上邊距
+        width: 表格寬度
+        header_font_size: 表頭字體大小
+        content_font_size: 內容字體大小
+        column_widths: 欄位寬度比例列表（可選），例如 [0.1, 0.15, 0.6, 0.05, 0.05, 0.05] 總和應為 1.0
+    
+    Returns:
+        table shape 物件
+    """
+    # 計算行數和列數
+    num_rows = len(rows) + 1  # +1 for header
+    num_cols = len(headers) if headers else (len(rows[0]) if rows else 1)
+    
+    # 計算表格高度（根據行數）
+    row_height = Inches(0.4)
+    height = row_height * num_rows
+    
+    # 創建表格
+    table_shape = slide.shapes.add_table(num_rows, num_cols, left, top, width, height)
+    table = table_shape.table
+    
+    # 設定每列寬度
+    if column_widths and len(column_widths) == num_cols:
+        # 使用自訂寬度比例
+        for col in range(num_cols):
+            table.columns[col].width = int(width * column_widths[col])
+    else:
+        # 平均分配寬度
+        col_width = int(width / num_cols)
+        for col in range(num_cols):
+            table.columns[col].width = col_width
+    
+    # 設定表頭
+    for col_idx, header_text in enumerate(headers):
+        if col_idx < num_cols:
+            cell = table.cell(0, col_idx)
+            
+            # 特殊處理表頭換行
+            text = header_text
+            if "主要工作內容" in text:
+                text = text.replace("(", "\n(").replace("（", "\n（")
+            elif "預計完成日" in text:
+                text = text.replace("完成", "完成\n")
+            
+            cell.text = text
+            # 設定表頭樣式（使用傳入的字體大小）
+            paragraph = cell.text_frame.paragraphs[0]
+            paragraph.font.bold = True
+            paragraph.font.size = header_font_size
+            paragraph.alignment = PP_ALIGN.CENTER
+            # 設定表頭背景色（深藍色）
+            cell.fill.solid()
+            cell.fill.fore_color.rgb = RGBColor(0, 51, 102)
+            paragraph.font.color.rgb = RGBColor(255, 255, 255)
+            
+            # 設定表頭邊框（白色）
+            _set_cell_border(cell, border_color="FFFFFF")
+    
+    # 設定資料行
+    for row_idx, row_data in enumerate(rows):
+        for col_idx, cell_text in enumerate(row_data):
+            if col_idx < num_cols:
+                cell = table.cell(row_idx + 1, col_idx)
+                
+                # 處理換行符號 <br>
+                text_content = str(cell_text)
+                # 將 <br>, <br/>, <BR> 等轉換為換行符號
+                text_content = re.sub(r'<br\s*/?>', '\n', text_content, flags=re.IGNORECASE)
+                
+                cell.text = text_content
+                
+                # 設定資料行樣式（使用傳入的字體大小）
+                # 遍歷所有段落設定字體，確保換行後字體一致
+                for paragraph in cell.text_frame.paragraphs:
+                    paragraph.font.size = content_font_size
+                    paragraph.alignment = PP_ALIGN.LEFT
+                
+                # 交替背景色
+                if row_idx % 2 == 0:
+                    cell.fill.solid()
+                    cell.fill.fore_color.rgb = RGBColor(240, 240, 240)
+                    
+                # 設定資料格邊框（白色）
+                _set_cell_border(cell, border_color="FFFFFF")
+    
+    return table_shape
+
 
 class FormatConverter:
     """格式轉換器 - 將 Markdown 轉換為各種輸出格式"""
@@ -73,9 +251,31 @@ class FormatConverter:
             template_path: 模板文件路徑（可選），如果是 PPTX 會繼承其母片樣式
         """
         # 如果模板是 PPTX，使用它作為基底（繼承母片樣式和背景）
+        # 預設字體大小
+        title_font_size = Pt(28)
+        content_font_size = Pt(14)
+        
         if template_path and template_path.lower().endswith('.pptx'):
             try:
                 prs = Presentation(template_path)
+                
+                # 嘗試從模板的第一張投影片提取字體大小
+                if len(prs.slides) > 0:
+                    first_slide = prs.slides[0]
+                    for shape in first_slide.shapes:
+                        if shape.has_text_frame:
+                            for para in shape.text_frame.paragraphs:
+                                if para.font.size:
+                                    font_size = para.font.size
+                                    # 判斷是標題還是內容（根據字體大小判斷）
+                                    if font_size >= Pt(20):
+                                        title_font_size = font_size
+                                        print(f"[INFO] 從模板提取標題字體大小: {font_size.pt}pt")
+                                    elif font_size >= Pt(10):
+                                        content_font_size = font_size
+                                        print(f"[INFO] 從模板提取內容字體大小: {font_size.pt}pt")
+                                    break
+                
                 # 刪除模板原有投影片，只保留母片樣式
                 while len(prs.slides) > 0:
                     rId = prs.slides._sldIdLst[0].rId
@@ -181,9 +381,14 @@ class FormatConverter:
         image_pattern = re.compile(r'[-\[]?\s*圖片\s+(\d+)-(\d+)(?::\s*來自投影片\s*\d+)?[\]]?')
         
         lines = content.split('\n')
-        for line in lines:
+        line_index = 0
+        
+        while line_index < len(lines):
+            line = lines[line_index]
             line_stripped = line.strip()
+            
             if not line_stripped:
+                line_index += 1
                 continue
             
             # 檢查是否為圖片標記
@@ -232,6 +437,7 @@ class FormatConverter:
                 else:
                     print(f"未找到圖片文件: {image_filename} (在 {image_folder})")
                 
+                line_index += 1
                 continue
                 
             # 新的一頁（一級或二級標題）
@@ -251,9 +457,8 @@ class FormatConverter:
                     print(f"[DEBUG] 空白版面，創建標題 TextBox")
                     title_box = shapes.add_textbox(Inches(0.5), Inches(0.3), Inches(9), Inches(0.8))
                     title_box.text_frame.paragraphs[0].text = title_text
-                    # 設定標題樣式（較大字體）
-                    from pptx.util import Pt
-                    title_box.text_frame.paragraphs[0].font.size = Pt(28)
+                    # 設定標題樣式（使用模板字體大小）
+                    title_box.text_frame.paragraphs[0].font.size = title_font_size
                     title_box.text_frame.paragraphs[0].font.bold = True
                 
                 # 除錯：列出所有 placeholders
@@ -270,12 +475,47 @@ class FormatConverter:
                 tf = textbox.text_frame
                 tf.word_wrap = True
                 
+                line_index += 1
+                continue
+            
+            # 檢查是否為 Markdown 表格
+            # 放寬條件：即使是列表項（- 開頭），只要包含 | 且能被解析為表格，就視為表格
+            if current_slide and '|' in line_stripped:
+                headers, rows, new_index = parse_markdown_table(lines, line_index)
+                if headers:  # 只要有表頭就視為表格
+                    # 如果沒有資料行，自動補三行空資料，以顯示空表格
+                    if not rows:
+                        rows = [['' for _ in headers] for _ in range(3)]
+                        print(f"[INFO] 表格無資料，自動補入三行空資料")
+                        
+                    print(f"[INFO] 發現表格：{len(headers)} 列 x {len(rows)} 行")
+                    
+                    # 檢查是否為工作報告表格（包含「主要工作內容」欄位）
+                    column_widths = None
+                    if any('主要工作內容' in str(h) for h in headers):
+                        # 工作報告表格：6個欄位 (項次, 專案名稱, 主要工作內容, 進度%, 預計完成日, 需求人)
+                        # 自訂寬度比例：項次 6%, 專案名稱 12%, 主要工作內容 55%, 進度% 6%, 預計完成日 12%, 需求人 8%
+                        column_widths = [0.06, 0.12, 0.55, 0.06, 0.12, 0.09]  # 總和 1.00
+                        print(f"[INFO] 檢測到工作報告表格，使用自訂欄位寬度: {column_widths}")
+                    
+                    # 刪除之前創建的 TextBox（如果存在）
+                    # 在當前投影片中創建原生表格（使用模板字體大小）
+                    create_pptx_table(current_slide, headers, rows, 
+                                      left=Inches(0.5), top=Inches(1.5), width=Inches(9.0),
+                                      header_font_size=content_font_size, content_font_size=content_font_size,
+                                      column_widths=column_widths)
+                    # 跳過已處理的表格行
+                    line_index = new_index
+                    tf = None  # 表格後不再使用原有的 TextFrame
+                    continue
+                
             # 內容點
-            elif current_slide and (line.startswith('- ') or line.startswith('* ')):
+            if current_slide and (line.startswith('- ') or line.startswith('* ')):
                 if tf:
                     p = tf.add_paragraph()
                     p.text = line[2:]
                     p.level = 0
+                    p.font.size = content_font_size
             
             # 普通文本作為內容
             elif current_slide and not line.startswith('#'):
@@ -283,6 +523,9 @@ class FormatConverter:
                     p = tf.add_paragraph()
                     p.text = line
                     p.level = 0
+                    p.font.size = content_font_size
+            
+            line_index += 1
                     
         return prs
 
