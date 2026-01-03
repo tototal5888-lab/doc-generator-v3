@@ -240,6 +240,64 @@ class FormatConverter:
         return doc
 
     @staticmethod
+    def _convert_ppt_to_pptx(ppt_path):
+        """
+        使用 COM 將 .ppt 轉換為 .pptx (僅限 Windows)
+        """
+        import os
+        try:
+            import win32com.client
+            import pythoncom
+        except ImportError:
+            print("[ERROR] 缺少 win32com 模組，無法轉換 .ppt 檔案")
+            return None
+            
+        base, _ = os.path.splitext(ppt_path)
+        pptx_path = base + "_converted.pptx"
+        
+        # 如果轉換後的文件存在且比源文件新，直接使用
+        if os.path.exists(pptx_path):
+            try:
+                if os.path.getmtime(pptx_path) > os.path.getmtime(ppt_path):
+                    print(f"[INFO] 使用已緩存的轉換檔案: {pptx_path}")
+                    return pptx_path
+            except Exception:
+                pass # 如果比較時間失敗，就重新轉換
+                
+        powerpoint = None
+        presentation = None
+        try:
+            pythoncom.CoInitialize()
+            try:
+                # 嘗試獲取現有的 PowerPoint 實例
+                powerpoint = win32com.client.GetActiveObject("PowerPoint.Application")
+            except Exception:
+                # 如果沒有，創建新的
+                powerpoint = win32com.client.Dispatch("PowerPoint.Application")
+            
+            abs_ppt_path = os.path.abspath(ppt_path)
+            abs_pptx_path = os.path.abspath(pptx_path)
+            
+            print(f"[INFO] 正在轉換: {abs_ppt_path} -> {abs_pptx_path}")
+            
+            # WithWindow=False 避免彈出視窗
+            presentation = powerpoint.Presentations.Open(abs_ppt_path, WithWindow=False)
+            presentation.SaveAs(abs_pptx_path, 24) # 24 = ppSaveAsOpenXMLPresentation (*.pptx)
+            
+            return pptx_path
+            
+        except Exception as e:
+            print(f"[ERROR] PPT 轉換失敗: {e}")
+            return None
+        finally:
+            if presentation:
+                try:
+                    presentation.Close()
+                except Exception:
+                    pass
+            # 不關閉 PowerPoint，避免影響使用者可能正在使用的視窗，或者保持進程以重用
+    
+    @staticmethod
     def markdown_to_pptx(content, doc_config, image_folder=None, template_path=None):
         """
         將Markdown轉換為PPTX
@@ -250,10 +308,19 @@ class FormatConverter:
             image_folder: 圖片文件夾路徑（可選）
             template_path: 模板文件路徑（可選），如果是 PPTX 會繼承其母片樣式
         """
-        # 如果模板是 PPTX，使用它作為基底（繼承母片樣式和背景）
         # 預設字體大小
         title_font_size = Pt(28)
         content_font_size = Pt(14)
+
+        if template_path:
+            # [Fix] 支援舊版 .ppt 格式：自動轉換為 .pptx
+            if template_path.lower().endswith('.ppt'):
+                print(f"[INFO] 檢測到 .ppt 格式，嘗試轉換為 .pptx: {template_path}")
+                converted_path = FormatConverter._convert_ppt_to_pptx(template_path)
+                if converted_path:
+                    template_path = converted_path
+                else:
+                    print(f"[WARNING] .ppt 轉換失敗，將無法讀取模板內容")
         
         if template_path and template_path.lower().endswith('.pptx'):
             try:
@@ -276,12 +343,22 @@ class FormatConverter:
                                         print(f"[INFO] 從模板提取內容字體大小: {font_size.pt}pt")
                                     break
                 
-                # 刪除模板原有投影片，只保留母片樣式
-                while len(prs.slides) > 0:
-                    rId = prs.slides._sldIdLst[0].rId
-                    prs.part.drop_rel(rId)
-                    del prs.slides._sldIdLst[0]
+                # [Fix] 不要刪除所有投影片，保留第一張作為 Title Slide
+                # 這樣可以保留 User 在第一張投影片上直接貼的圖（非 Master 樣式）
+                
+                # 嘗試刪除第一張之後的所有投影片
+                try:
+                    while len(prs.slides) > 1:
+                        rId = prs.slides._sldIdLst[1].rId
+                        prs.part.drop_rel(rId)
+                        del prs.slides._sldIdLst[1]
+                except Exception as del_err:
+                    print(f"[WARNING] 刪除多餘投影片時發生錯誤 (但不影響使用模板): {del_err}")
+                
                 print(f"[INFO] 使用 PPTX 模板作為基底: {template_path}")
+                if len(prs.slides) > 0:
+                    print(f"[INFO] 保留原有第一張投影片作為標題頁 (保留背景圖)")
+                
             except Exception as e:
                 print(f"[WARNING] 無法使用 PPTX 模板，使用空白簡報: {e}")
                 prs = Presentation()
@@ -351,14 +428,22 @@ class FormatConverter:
         
         # 重要：如果「標題及物件」版面沒有內容區域，使用空白版面代替
         # 這樣我們可以完全控制 TextBox 的位置
-        if bullet_slide_layout and blank_slide_layout:
-            print(f"[INFO] 內容頁將使用空白版面 '{blank_slide_layout.name}'，並自動創建 TextBox")
-            bullet_slide_layout = blank_slide_layout  # 使用空白版面作為內容版面
+        # [Fix] 使用者反映背景圖片消失，因為這裡強制切換到空白版面（通常沒有背景設計）
+        # 因後續代碼是直接創建 TextBox，使用原始的內容版面（帶背景）也不會影響文字排版
+        # if bullet_slide_layout and blank_slide_layout:
+        #     print(f"[INFO] 內容頁將使用空白版面 '{blank_slide_layout.name}'，並自動創建 TextBox")
+        #     bullet_slide_layout = blank_slide_layout  # 使用空白版面作為內容版面
         
         print(f"[INFO] 標題版面: {title_slide_layout.name}, 內容版面: {bullet_slide_layout.name if bullet_slide_layout else 'None'}")
         
-        # 創建標題頁
-        slide = prs.slides.add_slide(title_slide_layout)
+        # 創建標題頁 (如果是新簡報或模板已被清空)
+        slide = None
+        if len(prs.slides) > 0:
+            slide = prs.slides[0]
+            # 清空原有標題文字（如果有）- 不清空 Shape，只清空 Text，避免刪到背景圖
+            # 但我們直接覆蓋 slide.shapes.title.text 即可
+        else:
+            slide = prs.slides.add_slide(title_slide_layout)
         
         # 設定標題（如果有的話）
         if slide.shapes.title:
@@ -451,14 +536,30 @@ class FormatConverter:
                 # 檢查版面是否有標題 placeholder
                 if shapes.title:
                     shapes.title.text = title_text
-                    print(f"[DEBUG] 使用 placeholder 設定標題")
+                    # [Fix] 即使是 Placeholder 也強制設定字體大小為 32 並上移
+                    try:
+                        # 強制設定位置和大小，避免因為寬度太窄導致文字變成直式排列(換行)
+                        shapes.title.top = Inches(0.2)
+                        shapes.title.left = Inches(0.5)
+                        shapes.title.width = Inches(9.0)
+                        shapes.title.height = Inches(1.0)
+                        
+                        shapes.title.text_frame.word_wrap = True
+                        
+                        for paragraph in shapes.title.text_frame.paragraphs:
+                            paragraph.font.size = Pt(32)
+                            paragraph.font.bold = True
+                    except Exception as e:
+                        print(f"[WARNING] 無法調整標題樣式: {e}")
+                    print(f"[DEBUG] 使用 placeholder 設定標題 (強制 32pt, Top 0.2, Wide)")
                 else:
                     # 空白版面沒有標題 placeholder，創建標題 TextBox
                     print(f"[DEBUG] 空白版面，創建標題 TextBox")
-                    title_box = shapes.add_textbox(Inches(0.5), Inches(0.3), Inches(9), Inches(0.8))
+                    # [Fix] 上移標題位置 (0.3 -> 0.2)，調整字體大小為 32
+                    title_box = shapes.add_textbox(Inches(0.5), Inches(0.2), Inches(9), Inches(1.0))
                     title_box.text_frame.paragraphs[0].text = title_text
-                    # 設定標題樣式（使用模板字體大小）
-                    title_box.text_frame.paragraphs[0].font.size = title_font_size
+                    # 設定標題樣式
+                    title_box.text_frame.paragraphs[0].font.size = Pt(32)
                     title_box.text_frame.paragraphs[0].font.bold = True
                 
                 # 除錯：列出所有 placeholders
