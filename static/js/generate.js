@@ -99,28 +99,76 @@ function showGenerationResult(result) {
     };
 
     const resultContent = document.getElementById('result-content');
-    resultContent.innerHTML = `
-        <div class="alert alert-success show">
-            <div>
-                <div style="font-size: 1.2rem; font-weight: 700; margin-bottom: 10px;">
-                    ${formatIcons[result.format]} 文檔生成成功
+
+    // 檢查是否為多檔案結果 (只要 multiple 標記為真，即使只有一個檔案也用列表顯示)
+    if (result.multiple && result.files) {
+        // 多檔案模式
+        let filesHTML = '';
+        result.files.forEach((file, index) => {
+            filesHTML += `
+                <div class="flex items-center justify-between p-3 bg-base-200 rounded-lg mb-2">
+                    <div class="flex-1">
+                        <div class="font-semibold">${formatIcons[file.format] || '📄'} ${file.user}</div>
+                        <div class="text-sm opacity-60">${file.filename}</div>
+                    </div>
+                    <a href="${API_BASE_URL}/download/${file.filename}" class="btn btn-sm btn-success">
+                        ⬇️ 下載
+                    </a>
                 </div>
-                <div style="margin-bottom: 15px;">
-                    <strong>文件名:</strong> ${result.filename}<br>
-                    <strong>模型:</strong> ${result.usage ? result.usage.model : 'Unknown'}<br>
-                    <strong>消耗 Tokens:</strong> ${result.usage ? (result.usage.input_tokens + result.usage.output_tokens) : 0}<br>
-                    <strong>預估成本:</strong> $${result.usage ? result.usage.cost.toFixed(4) : '0.0000'}
+            `;
+        });
+
+        let failedHTML = '';
+        if (result.failed && result.failed.length > 0) {
+            failedHTML = `
+                <div class="alert alert-warning mt-4">
+                    <span>⚠️ 以下人員的報告生成失敗：</span>
+                    <ul class="text-sm mt-2">
+                        ${result.failed.map(f => `<li>${f.user}: ${f.error}</li>`).join('')}
+                    </ul>
                 </div>
-                <a href="${API_BASE_URL}/download/${result.filename}" class="btn btn-success">
-                    ⬇️ 下載文檔
-                </a>
+            `;
+        }
+
+        resultContent.innerHTML = `
+            <div class="alert alert-success show">
+                <div>
+                    <h3 class="font-bold text-lg mb-2">✅ 生成完成</h3>
+                    <div style="font-size: 1.1rem; margin-bottom: 10px;">
+                        已為 ${result.count} 位人員生成報告：
+                    </div>
+                    <div class="max-h-96 overflow-y-auto mb-4 custom-scrollbar">
+                        ${filesHTML}
+                    </div>
+                    ${failedHTML}
+                </div>
             </div>
-        </div>
-        <div style="margin-top: 25px;">
-            <h4 style="margin-bottom: 15px; color: var(--dark);">📝 內容預覽</h4>
-            <div class="result-preview">${result.preview || '無預覽內容'}</div>
-        </div>
-    `;
+        `;
+    } else {
+        // 單檔案模式（原有邏輯）
+        resultContent.innerHTML = `
+            <div class="alert alert-success show">
+                <div>
+                    <div style="font-size: 1.2rem; font-weight: 700; margin-bottom: 10px;">
+                        ${formatIcons[result.format]} 文檔生成成功
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <strong>文件名:</strong> ${result.filename}<br>
+                        <strong>模型:</strong> ${result.usage ? result.usage.model : 'Unknown'}<br>
+                        <strong>消耗 Tokens:</strong> ${result.usage ? (result.usage.input_tokens + result.usage.output_tokens) : 0}<br>
+                        <strong>預估成本:</strong> $${result.usage ? result.usage.cost.toFixed(4) : '0.0000'}
+                    </div>
+                    <a href="${API_BASE_URL}/download/${result.filename}" class="btn btn-success">
+                        ⬇️ 下載文檔
+                    </a>
+                </div>
+            </div>
+            <div style="margin-top: 25px;">
+                <h4 style="margin-bottom: 15px; color: var(--dark);">📝 內容預覽</h4>
+                <div class="result-preview">${result.preview || '無預覽內容'}</div>
+            </div>
+        `;
+    }
 }
 
 /**
@@ -222,10 +270,16 @@ async function optimizeRequirements() {
     const btn = document.getElementById('optimize-btn');
     const btnText = document.getElementById('optimize-btn-text');
     const btnLoading = document.getElementById('optimize-btn-loading');
+    const generateBtn = document.getElementById('generate-btn');
 
     btn.disabled = true;
     btnText.style.display = 'none';
     btnLoading.style.display = 'inline';
+
+    // 禁用生成文檔按鈕
+    if (generateBtn) {
+        generateBtn.disabled = true;
+    }
 
     try {
         const response = await fetch('/api/optimize-requirements', {
@@ -265,6 +319,11 @@ async function optimizeRequirements() {
         btn.disabled = false;
         btnText.style.display = 'inline';
         btnLoading.style.display = 'none';
+
+        // 恢復生成文檔按鈕
+        if (generateBtn) {
+            generateBtn.disabled = false;
+        }
     }
 }
 

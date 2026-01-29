@@ -6,6 +6,9 @@ from werkzeug.utils import secure_filename
 from .utils.helpers import safe_filename
 from .services import FileProcessor, FormatConverter, AIService
 from .services.kroki_service import KrokiService
+from .services.excel_parser import ExcelParser
+from .services.text_parser import TextParser
+from .utils.multi_user_handler import generate_multiple_work_reports
 
 bp = Blueprint('main', __name__)
 
@@ -18,6 +21,82 @@ def get_ai_service():
         current_app.ai_service = AIService(current_app.config)
     return current_app.ai_service
 
+def get_prompts_by_type(doc_type):
+    """從 PROMPTS_CONFIG.md 讀取指定文檔類型的 Prompt
+    
+    Args:
+        doc_type: 文檔類型 ('system_doc', 'sop', 'work_report', 'sop_optimize')
+    
+    Returns:
+        tuple: (optimize_prompt, generate_prompt)
+               對於 sop_optimize，optimize_prompt 為 None
+    """
+    config_path = 'PROMPTS_CONFIG.md'
+    
+    if not os.path.exists(config_path):
+        return None, None
+    
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # 定義文檔類型對應的標題標記
+        type_headers = {
+            'system_doc': '# System Doc - 系統文檔',
+            'sop': '# SOP - 標準作業程序',
+            'work_report': '# Work Report - 工作報告',
+            'sop_optimize': '# SOP Optimize - SOP 優化'
+        }
+        
+        if doc_type not in type_headers:
+            return None, None
+        
+        # 找到對應文檔類型的區塊
+        type_header = type_headers[doc_type]
+        type_start = content.find(type_header)
+        
+        if type_start == -1:
+            return None, None
+        
+        # 找到下一個文檔類型的開始位置（即當前區塊的結束位置）
+        next_section = content.find('\n---\n', type_start)
+        if next_section == -1:
+            next_section = content.find('\n## 注意事項', type_start)
+        
+        if next_section == -1:
+            type_section = content[type_start:]
+        else:
+            type_section = content[type_start:next_section]
+        
+        # 提取優化需求 Prompt
+        optimize_prompt = None
+        if doc_type != 'sop_optimize':  # sop_optimize 沒有優化需求 Prompt
+            optimize_start = type_section.find('## 優化需求 Prompt')
+            if optimize_start != -1:
+                optimize_end = type_section.find('## 生成文檔 Prompt', optimize_start)
+                if optimize_end != -1:
+                    optimize_section = type_section[optimize_start:optimize_end]
+                    prompt_start = optimize_section.find('```prompt\n')
+                    prompt_end = optimize_section.rfind('```')
+                    if prompt_start != -1 and prompt_end != -1 and prompt_start < prompt_end:
+                        optimize_prompt = optimize_section[prompt_start + 10:prompt_end].strip()
+        
+        # 提取生成文檔 Prompt
+        generate_prompt = None
+        generate_start = type_section.find('## 生成文檔 Prompt')
+        if generate_start != -1:
+            generate_section = type_section[generate_start:]
+            prompt_start = generate_section.find('```prompt\n')
+            prompt_end = generate_section.rfind('```')
+            if prompt_start != -1 and prompt_end != -1 and prompt_start < prompt_end:
+                generate_prompt = generate_section[prompt_start + 10:prompt_end].strip()
+        
+        return optimize_prompt, generate_prompt
+        
+    except Exception as e:
+        print(f"[ERROR] Failed to read prompts for {doc_type}: {e}")
+        return None, None
+
 @bp.route('/')
 def index():
     return render_template('index_v3_daisy.html')
@@ -25,6 +104,10 @@ def index():
 @bp.route('/help')
 def help_page():
     return render_template('help.html')
+
+@bp.route('/prompt-manager')
+def prompt_manager():
+    return render_template('prompt_manager.html')
 
 @bp.route('/api/help', methods=['GET'])
 def get_help():
@@ -160,6 +243,127 @@ def delete_template(filename):
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+@bp.route('/api/prompts', methods=['GET', 'POST'])
+def manage_prompts():
+    """管理所有文檔類型的 Prompt 配置"""
+    try:
+        config_path = 'PROMPTS_CONFIG.md'
+        
+        if request.method == 'GET':
+            # 讀取 Prompt 配置
+            doc_type = request.args.get('doc_type', 'work_report')
+            
+            if not os.path.exists(config_path):
+                return jsonify({"success": False, "error": "配置檔案不存在"}), 404
+            
+            # 使用 get_prompts_by_type 函數讀取
+            optimize_prompt, generate_prompt = get_prompts_by_type(doc_type)
+            
+            # sop_optimize 沒有優化需求 Prompt
+            has_optimize = doc_type != 'sop_optimize'
+            
+            return jsonify({
+                "success": True,
+                "doc_type": doc_type,
+                "optimize_prompt": optimize_prompt or "",
+                "generate_prompt": generate_prompt or "",
+                "has_optimize": has_optimize
+            })
+        
+        elif request.method == 'POST':
+            # 儲存 Prompt 配置
+            data = request.json
+            doc_type = data.get('doc_type', 'work_report')
+            optimize_prompt = data.get('optimize_prompt', '').strip()
+            generate_prompt = data.get('generate_prompt', '').strip()
+            
+            # 驗證：sop_optimize 只需要生成文檔 Prompt
+            if doc_type == 'sop_optimize':
+                if not generate_prompt:
+                    return jsonify({"success": False, "error": "生成文檔 Prompt 不能為空"}), 400
+            else:
+                if not optimize_prompt or not generate_prompt:
+                    return jsonify({"success": False, "error": "Prompt 內容不能為空"}), 400
+            
+            # 讀取現有配置檔案
+            if not os.path.exists(config_path):
+                return jsonify({"success": False, "error": "配置檔案不存在"}), 404
+            
+            with open(config_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # 找到要更新的文檔類型區塊
+            type_headers = {
+                'system_doc': '# System Doc - 系統文檔',
+                'sop': '# SOP - 標準作業程序',
+                'work_report': '# Work Report - 工作報告',
+                'sop_optimize': '# SOP Optimize - SOP 優化'
+            }
+            
+            if doc_type not in type_headers:
+                return jsonify({"success": False, "error": "不支援的文檔類型"}), 400
+            
+            type_header = type_headers[doc_type]
+            type_start = content.find(type_header)
+            
+            if type_start == -1:
+                return jsonify({"success": False, "error": f"找不到 {doc_type} 的配置區塊"}), 400
+            
+            # 找到下一個文檔類型的開始位置
+            next_section = content.find('\n---\n', type_start + len(type_header))
+            if next_section == -1:
+                next_section = content.find('\n## 注意事項', type_start)
+            
+            # 構建新的區塊內容
+            if doc_type == 'sop_optimize':
+                # SOP Optimize 只有生成文檔 Prompt
+                new_section = f"""{type_header}
+
+## 生成文檔 Prompt
+
+```prompt
+{generate_prompt}
+```
+"""
+            else:
+                # 其他類型有兩個 Prompt
+                new_section = f"""{type_header}
+
+## 優化需求 Prompt
+
+```prompt
+{optimize_prompt}
+```
+
+## 生成文檔 Prompt
+
+```prompt
+{generate_prompt}
+```
+"""
+            
+            # 替換舊的區塊內容
+            if next_section == -1:
+                # 最後一個區塊
+                new_content = content[:type_start] + new_section
+            else:
+                new_content = content[:type_start] + new_section + content[next_section:]
+            
+            # 儲存文件
+            with open(config_path, 'w', encoding='utf-8') as f:
+                f.write(new_content)
+            
+            return jsonify({
+                "success": True,
+                "message": f"{type_headers[doc_type]} 的 Prompt 配置已儲存"
+            })
+    
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        current_app.logger.error(f"管理 Prompt 失敗: {error_details}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @bp.route('/api/optimize-requirements', methods=['POST'])
 def optimize_requirements():
     """使用 AI 優化需求描述"""
@@ -196,14 +400,20 @@ def optimize_requirements():
         except Exception as e:
             print(f"[ERROR] Failed to read profile: {e}")
 
-        # 根據文檔類型構建優化提示詞
-        if doc_type == 'sop':
-            # SOP 專用的優化提示詞
-            role_def = "你現在是一位企業內部系統的 SOP 工程師，熟悉採購/廠商報價/審核流程。"
-            if profile_content:
-                role_def = "" # 使用 Profile 中的角色設定
-            
-            optimize_prompt = f"""
+        # 從 PROMPTS_CONFIG.md 讀取 Prompt（所有類型統一處理）
+        optimize_prompt_template, _ = get_prompts_by_type(doc_type)
+        
+        if optimize_prompt_template:
+            # 使用從配置檔案讀取的 Prompt
+            optimize_prompt = profile_content + "\n\n" + optimize_prompt_template.replace('{requirements}', requirements)
+        else:
+            # 如果讀取失敗，使用預設的 Prompt（向後兼容）
+            if doc_type == 'sop':
+                role_def = "你現在是一位企業內部系統的 SOP 工程師，熟悉採購/廠商報價/審核流程。"
+                if profile_content:
+                    role_def = ""
+                
+                optimize_prompt = f"""
 {profile_content}
 {role_def}
 輸出語言：繁體中文。
@@ -227,10 +437,9 @@ def optimize_requirements():
 {requirements}
 
 請依照上述規則，產生標準 SOP 文件："""
-
-        elif doc_type == 'system_doc':
-            # 系統文檔的優化提示詞
-            optimize_prompt = f"""
+            
+            elif doc_type == 'system_doc':
+                optimize_prompt = f"""
 {profile_content}
 請優化以下系統文檔的需求描述，使其更加清晰、完整、專業。
 
@@ -246,81 +455,10 @@ def optimize_requirements():
 6. 使用 Markdown 格式輸出
 
 優化後的需求描述："""
-
-        elif doc_type == 'work_report':
-            # 工作報告的優化提示詞
-            optimize_prompt = f"""
-{profile_content}
-你是一位專業的 ERP 工作報告整理專家。請根據以下從 Excel 工作報告中提取的原始資料，整理並結構化這些內容。
-
-=== 原始資料（從 Excel 提取）===
-{requirements}
-
-=== 整理要求 ===
-
-請仔細分析上述資料，並按照以下結構整理：
-
-**1. 本月參與會議**
-- 從資料中找出所有會議相關記錄
-- 整理格式：| 日期 | 會議名稱 | 參與人員 | 會議重點 |
-- 如果資料中沒有會議記錄，此欄位留空
-
-**2. 本月工作報告**
-
-**【專案分組與去重規則 - 極度重要】**：
-
-**步驟 1：分析並分組**
-- 先仔細閱讀所有工作項目資料
-- 按「專案名稱」進行分組
-- 找出每個專案的所有工作內容/任務
-
-**步驟 2：整理專案資訊**
-- 每個專案提取以下資訊：
-  - 專案名稱
-  - 進度百分比（如有多筆取最高值）
-  - 預計完成日（如有多筆取最新日期）
-  - 需求人
-
-**步驟 3：列出 Top3 工作內容**
-- 每個專案列出最多 3 項主要工作內容
-- 如果同一專案有多個相同工作，去重後只列一次
-- 如果工作項目少於 3 項，則全部列出
-- 按時間佔比或重要性排序（如資料中有提供）
-
-**輸出格式範例（表格）**：
-```
-| 項次 | 專案名稱 | 主要工作內容（Top3） | 進度% | 預計完成日 | 需求人 |
-|------|---------|---------------------|------|-----------|--------|
-| 1 | WMS專案 | 1. 友達WMS-User測試劇本開單<br>2. P廠Webapi 接口問題測試<br>3. 四方結轉問題討論 | 10% | 2025-11-20 | 謝正宜 |
-| 2 | ERP系統 | 1. 系統維護與優化<br>2. 報表功能開發<br>3. 使用者需求訪談 | 20% | 2025-12-01 | 謝正宜 |
-| 3 | 系統管理 | 1. 日常系統維護<br>2. 權限管理 | 0% | - | 謝正宜 |
-```
-
-**表格格式要求**：
-- 使用 Markdown 表格語法
-- 專案名稱：去重後每個專案只出現一次
-- 主要工作內容：使用 `<br>` 換行，最多列出 3 項
-- 每項工作前加序號（1. 2. 3.）
-- 這是最重要的部分，請先分組分析再填入表格
-
-**3. 其他欄位**
-- 跨系統、模組專案進度/問題報告：留空
-- 已完成待上線：留空
-- 工作排程：留空
-- 工作相關討論及建議：留空
-- 生活/資訊/技術分享：留空
-
-=== 輸出格式 ===
-- 使用 Markdown 格式
-- 使用表格呈現會議和工作項目
-- 只根據原始資料填入內容，沒有的資料留空，不要臆測或捏造
-- **記住：先分析分類，再去重合併，嚴禁重複行！**
-
-請開始整理："""
-
-        else:
-            # 預設的優化提示詞
-            optimize_prompt = f"""
+            
+            else:
+                # work_report 和其他類型的預設 Prompt
+                optimize_prompt = f"""
 {profile_content}
 請優化以下需求描述，使其更加清晰、完整、專業。
 
@@ -357,6 +495,154 @@ def generate_document():
         user_requirements = data.get('requirements')
         output_format = data.get('output_format', 'pptx')
         image_folder_name = data.get('image_folder')  # 從前端獲取圖片文件夾名稱
+        
+        # 特殊處理：檢查是否為工作報告 Excel 並需要多人員拆分
+        upload_folder = current_app.config['UPLOAD_FOLDER']
+        excel_file_path = None
+        
+        # 方式 1：如果 user_requirements 看起來像檔名，檢查該文件
+        if doc_type == 'work_report' and user_requirements:
+            if user_requirements.endswith(('.xlsx', '.xls')):
+                req_file_path = os.path.join(upload_folder, user_requirements)
+                if os.path.exists(req_file_path):
+                    excel_file_path = req_file_path
+                    print(f"[INFO] 檢測到 Excel 檔名: {user_requirements}")
+        
+        # 方式 2：查找 uploads 資料夾中最新的 Excel 文件（用戶上傳後的情況）
+        if not excel_file_path and doc_type == 'work_report':
+            try:
+                # 查找所有 temp_*.xlsx 和 temp_*.xls 文件
+                import glob
+                excel_patterns = [
+                    os.path.join(upload_folder, 'temp_*.xlsx'),
+                    os.path.join(upload_folder, 'temp_*.xls')
+                ]
+                excel_files = []
+                for pattern in excel_patterns:
+                    excel_files.extend(glob.glob(pattern))
+                
+                # 找到最新的文件
+                if excel_files:
+                    excel_file_path = max(excel_files, key=os.path.getmtime)
+                    print(f"[INFO] 找到最新的 Excel 文件: {excel_file_path}")
+            except Exception as e:
+                print(f"[WARNING] 查找 Excel 文件失敗: {e}")
+        
+        # 如果找到 Excel 文件，嘗試多人員處理
+        if excel_file_path and os.path.exists(excel_file_path):
+            print(f"[DEBUG] ========== 開始 Excel 多人員檢測流程 ==========")
+            print(f"[DEBUG] Excel 檔案路徑: {excel_file_path}")
+            print(f"[DEBUG] 檔案大小: {os.path.getsize(excel_file_path)} bytes")
+            print(f"[DEBUG] 文檔類型: {doc_type}")
+            print(f"[DEBUG] 模板檔案: {template_file}")
+            print(f"[DEBUG] 輸出格式: {output_format}")
+            
+            try:
+                # 嘗試自動轉換 XLS -> XLSX (對於多人員檢測流程)
+                if excel_file_path.lower().endswith('.xls'):
+                    print(f"[INFO] 檢測到 XLS 文件，嘗試轉換為 XLSX 以獲得更穩定的解析: {excel_file_path}")
+                    xlsx_path = excel_file_path.replace('.xls', '.xlsx')
+                    
+                    # 如果 XLSX 已經存在（無論是否由 extract_text 生成），優先使用
+                    if os.path.exists(xlsx_path):
+                        print(f"[INFO] 發現對應的 XLSX 文件，切換使用: {xlsx_path}")
+                        excel_file_path = xlsx_path
+                    else:
+                        # 嘗試轉換
+                        try:
+                            import win32com.client as win32
+                            import pythoncom
+                            
+                            excel = None
+                            wb = None
+                            try:
+                                pythoncom.CoInitialize()
+                                excel = win32.DispatchEx("Excel.Application")
+                                excel.Visible = False
+                                excel.DisplayAlerts = False
+                                
+                                abs_path = os.path.abspath(excel_file_path)
+                                abs_out_path = os.path.abspath(xlsx_path)
+                                
+                                wb = excel.Workbooks.Open(abs_path, ReadOnly=True, UpdateLinks=False)
+                                wb.SaveAs(abs_out_path, FileFormat=51) # 51 = xlOpenXMLWorkbook
+                                wb.Close(False)
+                                excel.Quit()
+                                
+                                print(f"[SUCCESS] 成功將 XLS 轉換為 XLSX，切換使用: {xlsx_path}")
+                                excel_file_path = xlsx_path
+                                
+                                # 刪除原始 XLS 以避免混淆（可選）
+                                try:
+                                    import time
+                                    time.sleep(0.5)
+                                    if os.path.exists(excel_file_path.replace('.xlsx', '.xls')):
+                                        # 這裡要注意不要刪錯，因為現在 excel_file_path 已經是 xlsx
+                                        pass
+                                except:
+                                    pass
+                                    
+                            except Exception as com_err:
+                                print(f"[WARNING] 多人員檢測時 XLS 轉換失敗: {com_err}")
+                            finally:
+                                try:
+                                    if wb: wb.Close(False)
+                                    if excel: excel.Quit()
+                                except: pass
+                                pythoncom.CoUninitialize()
+                        except Exception as e:
+                            print(f"[WARNING] 轉換過程發生錯誤: {e}")
+
+                print(f"[INFO] 開始解析 Excel: {excel_file_path}")
+                excel_data = ExcelParser.parse_work_report_excel(excel_file_path)
+                
+                print(f"[INFO] ========== Excel 解析結果 ==========")
+                print(f"[INFO] has_multiple_users: {excel_data['has_multiple_users']}")
+                print(f"[INFO] 人員數量: {len(excel_data['users'])}")
+                print(f"[INFO] 人員列表: {excel_data['users']}")
+                print(f"[INFO] data_by_user keys: {list(excel_data.get('data_by_user', {}).keys())}")
+                
+                if excel_data['has_multiple_users']:
+                    # 多人員：呼叫多人員處理函數
+                    print(f"[INFO] ========== 啟動多人員處理流程 ==========")
+                    print(f"[INFO] 檢測到多人員({len(excel_data['users'])}位)，準備生成多個簡報")
+                    print(f"[INFO] 模板: {template_file}, 格式: {output_format}")
+                    
+                    result = generate_multiple_work_reports(excel_data, template_file, output_format, image_folder_name)
+                    
+                    print(f"[INFO] ========== 多人員處理完成 ==========")
+                    print(f"[INFO] 返回結果類型: {type(result)}")
+                    
+                    return result
+                else:
+                    print(f"[INFO] 單人員或無人員欄位，使用標準流程")
+            except Exception as e:
+                print(f"[ERROR] ========== Excel 多人員檢測失敗 ==========")
+                print(f"[ERROR] 錯誤訊息: {e}")
+                print(f"[ERROR] 錯誤類型: {type(e).__name__}")
+                import traceback
+                traceback.print_exc()
+                print(f"[ERROR] ========== 錯誤堆疊結束 ==========")
+                # 不要中斷，讓程序繼續執行標準流程
+        
+        # 方式 3：檢查文字檔是否包含多人員標記
+        if doc_type == 'work_report' and not excel_file_path and user_requirements:
+            try:
+                print(f"[INFO] 開始分析文字內容是否包含多人員標記")
+                text_data = TextParser.parse_work_report_text(user_requirements)
+                
+                print(f"[INFO] 文字解析結果: has_multiple_users={text_data['has_multiple_users']}, users={text_data['users']}")
+                
+                if text_data['has_multiple_users']:
+                    # 多人員：呼叫多人員處理函數
+                    print(f"[INFO] 文字檔檢測到多人員({len(text_data['users'])}位)，啟動多人員處理")
+                    return generate_multiple_work_reports(text_data, template_file, output_format, image_folder_name)
+                else:
+                    print(f"[INFO] 文字檔為單人員或無人員標記，使用標準流程")
+            except Exception as e:
+                print(f"[ERROR] 文字檔多人員檢測失敗: {e}")
+                import traceback
+                traceback.print_exc()
         
         if not all([doc_type, template_file, user_requirements]):
             return jsonify({"error": "缺少必要參數"}), 400
@@ -438,88 +724,7 @@ def generate_document():
             },
             "work_report": {
                 "name": "工作報告",
-                "prompt": f"""
-{profile_content}
-請根據用戶提供的資料，生成一份 ERP 工作報告簡報。
-
-用戶需求（本月會議及工作資料）：
-{user_requirements}
-
-=== 簡報結構要求（共 7 頁內容）===
-
-請嚴格按照以下結構生成簡報，使用 Markdown 格式，每個 ## 標題代表一頁：
-（注意：第1頁標題頁由系統自動生成，請勿生成標題頁）
-
-## 本月參與會議報告
-- 依據用戶提供的資料，將會議資訊填入
-- 使用表格形式呈現：| 日期 | 會議名稱 | 參與人員 | 會議重點 |
-- **即使沒有會議資料，也必須生成表格（內容留空）**
-
-## 跨系統、模組專案進度/問題報告
-- 使用表格形式呈現：| 系統/模組 | 專案內容 | 進度/問題 | 預計解決日 |
-- **即使沒有資料，也必須生成表格（內容留空）**
-
-## 已完成待上線
-- 使用表格形式呈現：| 專案名稱 | 內容說明 | 完成日 | 預計上線日 |
-- **即使沒有資料，也必須生成表格（內容留空）**
-
-## 本月工作報告
-- **【專案分組與去重規則 - 極度重要】**：
-  
-  **步驟 1：分析並分組**
-  - 先仔細閱讀用戶提供的所有工作項目資料
-  - 按「專案名稱」進行分組
-  - 找出每個專案的所有工作內容/任務
-  
-  **步驟 2：整理專案資訊**
-  - 每個專案提取以下資訊：
-    - 專案名稱
-    - 進度百分比（如有多筆取最高值）
-    - 預計完成日（如有多筆取最新日期）
-    - 需求人
-  
-  **步驟 3：列出 Top3 工作內容**
-  - 每個專案列出最多 3 項主要工作內容
-  - 如果同一專案有多個相同工作，去重後只列一次
-  - 如果工作項目少於 3 項，則全部列出
-  - 按時間佔比或重要性排序（如資料中有提供）
-  
-  **輸出格式範例（表格）**：
-  ```
-  | 項次 | 專案名稱 | 主要工作內容（Top3） | 進度% | 預計完成日 | 需求人 |
-  |------|---------|---------------------|------|-----------|--------|
-  | 1 | WMS專案 | 1. 友達WMS-User測試劇本開單<br>2. P廠Webapi 接口問題測試<br>3. 四方結轉問題討論 | 10% | 2025-11-20 | 謝正宜 |
-  | 2 | ERP系統 | 1. 系統維護與優化<br>2. 報表功能開發<br>3. 使用者需求訪談 | 20% | 2025-12-01 | 謝正宜 |
-  | 3 | 系統管理 | 1. 日常系統維護<br>2. 權限管理 | 0% | - | 謝正宜 |
-  ```
-
-- **表格格式要求**：
-  - 使用 Markdown 表格語法
-  - 專案名稱：去重後每個專案只出現一次
-  - 主要工作內容：使用 `<br>` 換行，最多列出 3 項
-  - 每項工作前加序號（1. 2. 3.）
-- 這是最重要的部分，請先分組分析再填入表格
-
-- 這是最重要的部分，請先分組分析再填入表格
-
-## 工作排程
-- 使用表格形式呈現：| 預計執行期間 | 工作項目 | 優先序 | 備註 |
-- **即使沒有資料，也必須生成表格（內容留空）**
-
-## 工作相關討論及建議
-- 使用表格形式呈現：| 議題 | 討論內容/建議 | 結論 | 追蹤事項 |
-- **即使沒有資料，也必須生成表格（內容留空）**
-
-## 生活/資訊/技術分享
-- 使用表格形式呈現：| 主題 | 內容摘要 | 分享人 |
-- **即使沒有資料，也必須生成表格（內容留空）**
-
-=== 重要提醒 ===
-1. 不要生成「ERP工作報告」標題頁，標題頁由系統自動生成
-2. 每個 ## 標題代表一頁投影片
-3. 會議和工作項目請使用 Markdown 表格語法（| 欄位1 | 欄位2 |）
-4. 使用 Markdown 格式輸出
-                """,
+                "prompt": None,  # Will be set below
                 "title": "ERP工作報告"
             },
             "sop_optimize": {
@@ -579,6 +784,21 @@ def generate_document():
         doc_config = prompts.get(doc_type)
         if not doc_config:
             return jsonify({"error": "不支持的文檔類型"}), 400
+        
+        # 從 PROMPTS_CONFIG.md 讀取對應文檔類型的生成 Prompt（統一處理）
+        _, generate_prompt_template = get_prompts_by_type(doc_type)
+        
+        if generate_prompt_template:
+            # 使用從配置檔案讀取的 Prompt，替換變數
+            prompt_with_vars = generate_prompt_template.replace('{user_requirements}', user_requirements)
+            prompt_with_vars = prompt_with_vars.replace('{template_content}', template_content)
+            doc_config['prompt'] = profile_content + "\n\n" + prompt_with_vars
+        elif doc_config.get('prompt'):
+            # 如果配置檔案讀取失敗，使用程式碼中預設的 Prompt（向後兼容）
+            pass  # 保留原始 prompt
+        else:
+            # 如果兩者都沒有，返回錯誤
+            return jsonify({"error": f"無法載入 {doc_type} 的 Prompt 配置"}), 500
             
         # 3. 調用 AI 生成內容
         ai_service = get_ai_service()
@@ -798,16 +1018,86 @@ def extract_text():
         if file.filename == '':
             return jsonify({"success": False, "error": "未選擇文件"}), 400
         
-        # 保存臨時文件
+        
+        # 保存臨時文件（使用時間戳避免衝突）
+        import time
         filename = safe_filename(file.filename)
         temp_folder = current_app.config['UPLOAD_FOLDER']
-        temp_path = os.path.join(temp_folder, f"temp_{filename}")
+        timestamp = int(time.time() * 1000)  # 毫秒級時間戳
+        temp_path = os.path.join(temp_folder, f"temp_{timestamp}_{filename}")
+        
+        # 如果文件存在（不太可能，但以防萬一），先刪除
+        if os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except:
+                pass
+        
         file.save(temp_path)
+        
         
         try:
             ext = filename.lower().split('.')[-1]
             content = ""
             image_info = None
+            
+            # 如果是 XLS，自動轉換為 XLSX（更穩定）
+            if ext == 'xls':
+                print(f"[INFO] 檢測到 .xls 文件，嘗試自動轉換為 .xlsx...")
+                converted_path = temp_path.replace('.xls', '.xlsx')
+                
+                try:
+                    # 嘗試使用 Excel COM 轉換
+                    import win32com.client as win32
+                    import pythoncom
+                    
+                    excel = None
+                    wb = None
+                    try:
+                        pythoncom.CoInitialize()
+                        excel = win32.DispatchEx("Excel.Application")
+                        excel.Visible = False
+                        excel.DisplayAlerts = False
+                        
+                        abs_temp_path = os.path.abspath(temp_path)
+                        wb = excel.Workbooks.Open(abs_temp_path, ReadOnly=True, UpdateLinks=False)
+                        
+                        # 另存為 XLSX (51 = xlOpenXMLWorkbook)
+                        abs_converted_path = os.path.abspath(converted_path)
+                        wb.SaveAs(abs_converted_path, FileFormat=51)
+                        wb.Close(False)
+                        excel.Quit()
+                        
+                        print(f"[SUCCESS] 已成功轉換為 .xlsx 格式")
+                        
+                        # 刪除原始 XLS 文件
+                        try:
+                            import time
+                            time.sleep(0.2)
+                            if os.path.exists(temp_path):
+                                os.remove(temp_path)
+                        except:
+                            pass
+                        
+                        # 使用轉換後的文件
+                        temp_path = converted_path
+                        filename = os.path.basename(converted_path)
+                        ext = 'xlsx'
+                        
+                    finally:
+                        try:
+                            if wb:
+                                wb.Close(False)
+                            if excel:
+                                excel.Quit()
+                                del excel
+                        except:
+                            pass
+                        pythoncom.CoUninitialize()
+                        
+                except Exception as convert_error:
+                    print(f"[WARNING] XLS 轉換失敗: {convert_error}")
+                    print("[INFO] 將使用原始 XLS 文件繼續處理")
             
             # 如果是 PPTX，提取圖片
             if ext == 'pptx':
@@ -834,8 +1124,19 @@ def extract_text():
                 # 其他格式使用原有邏輯
                 content = FileProcessor.extract_text(temp_path)
             
-            # 刪除臨時文件
-            os.remove(temp_path)
+            # 嘗試刪除臨時文件（容錯處理）
+            try:
+                # 添加短暫延遲，讓文件句柄完全釋放
+                import time
+                time.sleep(0.1)
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+            except PermissionError as pe:
+                # Windows 文件鎖定問題，記錄警告但不中斷
+                print(f"[WARNING] 無法刪除臨時文件 {temp_path}: {pe}")
+                print("[INFO] 文件將在下次清理時移除")
+            except Exception as e:
+                print(f"[WARNING] 刪除臨時文件時發生錯誤: {e}")
             
             response_data = {
                 "success": True,
@@ -853,13 +1154,26 @@ def extract_text():
             return jsonify(response_data)
             
         except Exception as e:
-            # 確保刪除臨時文件
-            if os.path.exists(temp_path):
-                os.remove(temp_path)
+            # 確保嘗試刪除臨時文件（容錯）
+            try:
+                if os.path.exists(temp_path):
+                    import time
+                    time.sleep(0.1)
+                    os.remove(temp_path)
+            except:
+                print(f"[WARNING] 清理臨時文件失敗: {temp_path}")
+            # 打印詳細錯誤訊息
+            import traceback
+            print(f"[ERROR] extract_text 內部錯誤: {e}")
+            print(traceback.format_exc())
             raise e
             
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        import traceback
+        error_msg = str(e)
+        print(f"[ERROR] extract_text 失敗: {error_msg}")
+        print(traceback.format_exc())
+        return jsonify({"success": False, "error": error_msg}), 500
 
 @bp.route('/api/stage_image', methods=['POST'])
 def stage_image():
