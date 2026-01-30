@@ -44,8 +44,18 @@ async function generateDocument() {
         }
     }
 
-    generateBtn.innerHTML = '<span class="spinner"></span> 生成中...';
-    generateBtn.disabled = true;
+    // generateBtn.innerHTML = '<span class="spinner"></span> 生成中...';
+    // generateBtn.disabled = true;
+
+    // 顯示恐龍跑跑動畫模態框
+    const loadingModal = document.getElementById('loading-modal');
+    if (loadingModal) {
+        loadingModal.showModal();
+    } else {
+        // Fallback if modal not found
+        generateBtn.innerHTML = '<span class="spinner"></span> 生成中...';
+        generateBtn.disabled = true;
+    }
 
     try {
         const requestData = {
@@ -78,6 +88,11 @@ async function generateDocument() {
     } catch (error) {
         showAlert(alertElement, 'error', '❌ 生成失敗: ' + error.message);
     } finally {
+        // 關閉模態框
+        if (loadingModal) {
+            loadingModal.close();
+        }
+
         generateBtn.innerHTML = '✨ 生成文檔';
         generateBtn.disabled = false;
     }
@@ -276,6 +291,15 @@ async function optimizeRequirements() {
     btnText.style.display = 'none';
     btnLoading.style.display = 'inline';
 
+    // 顯示恐龍/馬力歐跑跑動畫模態框
+    const loadingModal = document.getElementById('loading-modal');
+    if (loadingModal) {
+        loadingModal.showModal();
+        /* Update loading text if possible */
+        const title = loadingModal.querySelector('h3');
+        if (title) title.textContent = '🧠 AI 正在優化需求中...';
+    }
+
     // 禁用生成文檔按鈕
     if (generateBtn) {
         generateBtn.disabled = true;
@@ -308,6 +332,12 @@ async function optimizeRequirements() {
                 behavior: 'smooth',
                 block: 'nearest'
             });
+
+            // 成功提示
+            const alertElement = document.getElementById('generate-alert');
+            if (alertElement) {
+                showAlert(alertElement, 'success', '✨ 需求優化完成！');
+            }
         } else {
             alert('❌ 優化失敗：' + (data.error || '未知錯誤'));
         }
@@ -319,6 +349,14 @@ async function optimizeRequirements() {
         btn.disabled = false;
         btnText.style.display = 'inline';
         btnLoading.style.display = 'none';
+
+        // 關閉模態框
+        if (loadingModal) {
+            loadingModal.close();
+            // Reset title for next use if needed
+            const title = loadingModal.querySelector('h3');
+            if (title) title.textContent = '🎰 文檔生成中...';
+        }
 
         // 恢復生成文檔按鈕
         if (generateBtn) {

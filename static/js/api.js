@@ -13,11 +13,18 @@ function showAlert(element, type, message) {
     const alertElement = typeof element === 'string' ? document.getElementById(element) : element;
     if (!alertElement) return;
 
-    alertElement.className = `alert alert-${type} show`;
+    // 清除之前的類型
+    alertElement.classList.remove('alert-success', 'alert-error', 'alert-warning', 'alert-info');
+
+    // 添加新類型和顯示
+    alertElement.classList.add(`alert-${type}`);
+    alertElement.classList.remove('hidden');
+
     alertElement.textContent = message;
 
+    // 5秒後自動隱藏
     setTimeout(() => {
-        alertElement.classList.remove('show');
+        alertElement.classList.add('hidden');
     }, 5000);
 }
 

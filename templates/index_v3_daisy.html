@@ -534,6 +534,174 @@
         </form>
     </div>
 
+    <!-- 載入中動畫模態框 -->
+    <dialog id="loading-modal" class="modal">
+        <div class="modal-box p-0 w-80 max-w-sm overflow-hidden relative bg-[#5c94fc] border-4 border-white shadow-xl"
+            style="height: 250px;">
+            <!-- 天空與雲 - 調整位置避免遮擋文字 -->
+            <div class="absolute inset-0 overflow-hidden">
+                <div class="cloud text-white opacity-40 text-3xl absolute top-16"
+                    style="animation: cloud-move 20s linear infinite;">☁️</div>
+                <div class="cloud text-white opacity-30 text-2xl absolute top-24"
+                    style="animation: cloud-move 15s linear infinite; animation-delay: -5s;">☁️</div>
+            </div>
+
+            <!-- 文字框 - 改為置頂顯示 -->
+            <div class="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 w-full px-4">
+                <div
+                    class="bg-white/90 p-3 rounded-lg border-2 border-black shadow-[3px_3px_0_0_rgba(0,0,0,1)] text-center">
+                    <h3 class="font-black text-lg mb-1 text-black pixel-font blinking-cursor">資料處理中...</h3>
+                    <p class="text-xs font-bold text-gray-600 pixel-font">AI 正在努力運算中</p>
+                </div>
+            </div>
+
+            <!-- 地面 -->
+            <div class="absolute bottom-0 w-full h-8 bg-[#c84c0c] border-t-4 border-[#000]">
+                <div
+                    class="w-full h-full bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDQwIDQwIj48cmVjdCB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIGZpbGw9IiM5MjkwZmYiLz48cmVjdCB4PSI1IiB5PSI1IiB3aWR0aD0iMzAiIGhlaWdodD0iMzAiIGZpbGw9IiNmZmMiLz48cmVjdCB4PSIxMCIgeT0iMTAiIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0iI2Q0OWU4YyIvPjwvc3ZnPg==')] opacity-10">
+                </div>
+                <div class="absolute top-0 w-full h-1 bg-[#80d010]"></div>
+            </div>
+
+            <!-- 瑪利歐 -->
+            <div class="mario-container absolute bottom-8 left-8 z-20">
+                <div class="mario animate-run-jump text-4xl filter drop-shadow-md relative">
+                    🏃‍♂️
+                    <div
+                        class="absolute -top-4 -right-1 text-xs animate-bounce text-yellow-300 font-bold opacity-0 jump-coin">
+                        TEST!</div>
+                </div>
+            </div>
+
+            <!-- 障礙物與道具 (向左移動) -->
+            <div class="obstacles-container absolute bottom-8 right-0 flex items-end h-full z-10"
+                style="animation: scroll-left 4s linear infinite;">
+                <div class="w-10 h-10 mr-24 flex items-end justify-center">
+                    <div class="text-2xl animate-bounce">❓</div> <!-- 問號磚塊 -->
+                </div>
+                <div class="w-8 h-12 bg-green-600 border-2 border-green-800 rounded-t mr-32 relative shadow-lg">
+                    <div
+                        class="absolute -top-1 left-[-1px] w-[calc(100%+2px)] h-4 bg-green-500 border-2 border-green-800 rounded-sm">
+                    </div> <!-- 水管 -->
+                </div>
+                <div class="text-2xl mr-24 self-end mb-1">🍄</div> <!-- 蘑菇 -->
+                <div class="text-2xl mr-8 self-end mb-1">🐢</div> <!-- 烏龜 -->
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop bg-black/60">
+            <button disabled style="cursor: default;">close</button>
+        </form>
+    </dialog>
+
+    <style>
+        .pixel-font {
+            font-family: 'Courier New', Courier, monospace;
+            /* Fallback for pixel style */
+        }
+
+        @keyframes cloud-move {
+            0% {
+                left: 100%;
+            }
+
+            100% {
+                left: -20%;
+            }
+        }
+
+        @keyframes scroll-left {
+            0% {
+                transform: translateX(100%);
+            }
+
+            100% {
+                transform: translateX(-100%);
+            }
+        }
+
+        @keyframes mario-run {
+
+            0%,
+            100% {
+                transform: translateY(0) scaleX(1);
+            }
+
+            50% {
+                transform: translateY(-1px) scaleX(1);
+            }
+        }
+
+        @keyframes mario-jump {
+            0% {
+                transform: translateY(0);
+            }
+
+            20% {
+                transform: translateY(-40px);
+            }
+
+            /* Jump over pipe */
+            40% {
+                transform: translateY(0);
+            }
+
+            100% {
+                transform: translateY(0);
+            }
+        }
+
+        /* Combine run and jump - simplified: he runs in place, jumps occasionally */
+        .animate-run-jump {
+            animation: mario-run 0.2s steps(2) infinite, mario-jump 4s ease-in-out infinite;
+            /* Jump sync with obstacles scrolling period */
+        }
+
+        @keyframes text-blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0;
+            }
+        }
+
+        .blinking-cursor::after {
+            content: '▋';
+            margin-left: 2px;
+            animation: text-blink 1s step-end infinite;
+        }
+
+        @keyframes coin-pop {
+            0% {
+                transform: translateY(10px);
+                opacity: 0;
+            }
+
+            20% {
+                transform: translateY(-20px);
+                opacity: 1;
+            }
+
+            40% {
+                transform: translateY(-10px);
+                opacity: 0;
+            }
+
+            100% {
+                opacity: 0;
+            }
+        }
+
+        .jump-coin {
+            animation: coin-pop 4s ease-in-out infinite;
+            animation-delay: 0.8s;
+            /* Sync with jump peak */
+        }
+    </style>
+
     <!-- 模組化 JavaScript -->
     <script src="/static/js/api.js"></script>
     <script src="/static/js/ui.js"></script>

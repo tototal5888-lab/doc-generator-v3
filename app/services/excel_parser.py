@@ -80,8 +80,23 @@ class ExcelParser:
                 else:
                     return None
             
+            # Support merged cells: forward fill the user column
+            # This handles cases where the 'User' column is merged across multiple rows of tasks
+            df[target_col] = df[target_col].ffill()
+            
+            # Also ffill '填單日期' and '專案' as they are often merged too
+            cols_to_ffill = ['填單日期', '專案']
+            for col in cols_to_ffill:
+                if col in df.columns:
+                    df[col] = df[col].ffill()
+            
             # 4. 過濾無效資料 (填單人員為空的行)
+            # After ffill, if it's still empty, it's truly empty (e.g. at start of file before any user)
             df = df.dropna(subset=[target_col])
+            
+            # Cleaning: Strip whitespace from all string columns to resolve matching issues (Explicit Request)
+            for col in df.select_dtypes(['object']):
+                df[col] = df[col].astype(str).str.strip()
             
             # 5. 分組
             users = df[target_col].unique().tolist()
@@ -102,6 +117,22 @@ class ExcelParser:
                 for col in user_df.columns:
                     if pd.api.types.is_datetime64_any_dtype(user_df[col]):
                         user_df[col] = user_df[col].dt.strftime('%Y-%m-%d')
+                
+                # Filter useful columns only to reduce token usage and confusion for AI
+                useful_cols = [
+                    '填單日期', '填單人員', '專案', '工作內容', '完成百分比', 
+                    '預計完成日', '專案名稱', '需求人', '專案分類', '組別', 
+                    '系統', '模組', '備註', '說明', '狀態', '進度百分比', '內容簡述', '內容簡述/目的'
+                ]
+                # Keep only columns that exist in the dataframe
+                cols_to_keep = [c for c in useful_cols if c in user_df.columns]
+                
+                # If '專案' is missing but '專案Code' exists, maybe fallback? 
+                # But user explicitly has '專案' in their data. 
+                # Ensure we keep '專案' if present.
+                
+                if cols_to_keep:
+                    user_df = user_df[cols_to_keep]
                 
                 # 轉為 Markdown 表格字串
                 user_data_str = user_df.to_markdown(index=False)
