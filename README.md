@@ -27,13 +27,13 @@
 - Python 3.10 或更高版本
 
 ### 依賴套件
-所有依賴已列在 `requirements_v3.txt` 中
+所有依賴已列在 `requirements.txt` 中
 
 ## 🚀 快速開始
 
 ### 1. 安裝依賴
 ```bash
-pip install -r requirements_v3.txt
+pip install -r requirements.txt
 ```
 
 ### 2. 配置 API 密鑰
@@ -43,8 +43,9 @@ pip install -r requirements_v3.txt
 
 ### 3. 啟動應用
 ```bash
-python app_v3.py
+python run.py
 ```
+或直接執行 `start_server.bat`
 
 ### 4. 訪問應用
 打開瀏覽器訪問: http://localhost:5000
@@ -134,10 +135,11 @@ python app_v3.py
 
 ```
 doc_generator_v3/
-├── app_v3.py                 # 主程式 (多格式支援)
+├── run.py                    # 主程式 (多格式支援)
+├── start_server.bat         # Windows 啟動腳本
 ├── templates/
 │   └── index_v3.html        # 前端界面 (專業版)
-├── requirements_v3.txt       # Python 依賴
+├── requirements.txt         # Python 依賴
 ├── config/
 │   └── api_config.json      # API 配置 (自動生成)
 ├── uploads/                 # 臨時上傳目錄

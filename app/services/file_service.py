@@ -210,63 +210,155 @@ class FileProcessor:
             except Exception as e:
                 print(f"[WARNING] xlrd 讀取失敗: {e}")
         
-        # 備用方案：使用 Excel COM 接口
+        # 備用方案:使用 Excel COM 接口
         if WIN32_AVAILABLE:
-            excel = None
-            wb = None
-            try:
-                pythoncom.CoInitialize()
-                excel = win32.DispatchEx("Excel.Application")  # 使用 DispatchEx 創建新實例
-                excel.Visible = False
-                excel.DisplayAlerts = False
-                excel.Interactive = False
+            max_retries = 3
+            
+            for attempt in range(max_retries):
+                excel = None
+                wb = None
                 
-                abs_path = os.path.abspath(file_path)
-                wb = excel.Workbooks.Open(abs_path, ReadOnly=True)
-                all_text = []
-                
-                for sheet_idx in range(1, wb.Sheets.Count + 1):
-                    sheet = wb.Sheets(sheet_idx)
-                    sheet_name = sheet.Name
-                    sheet_text = [f"=== 工作表: {sheet_name} ==="]
-                    
-                    # 獲取使用範圍
-                    used_range = sheet.UsedRange
-                    if used_range is not None:
-                        # 一次性讀取所有數據
-                        values = used_range.Value
-                        if values:
-                            # values 可能是單一值或二維 tuple
-                            if isinstance(values, tuple):
-                                for row in values:
-                                    if isinstance(row, tuple):
-                                        row_values = [str(cell) for cell in row if cell is not None]
-                                    else:
-                                        row_values = [str(row)] if row is not None else []
-                                    if row_values:
-                                        sheet_text.append(" | ".join(row_values))
-                            else:
-                                sheet_text.append(str(values))
-                    
-                    if len(sheet_text) > 1:
-                        all_text.append("\n".join(sheet_text))
-                
-                result = "\n\n".join(all_text)
-                return result
-                
-            except Exception as e:
-                return f"讀取 XLS 失敗: {str(e)}"
-            finally:
-                # 確保正確關閉
                 try:
-                    if wb is not None:
-                        wb.Close(False)
-                    if excel is not None:
-                        excel.Quit()
-                        del excel
-                except:
-                    pass
-                pythoncom.CoUninitialize()
+                    # 強制清理之前的 COM 狀態
+                    try:
+                        pythoncom.CoUninitialize()
+                    except:
+                        pass
+                    
+                    # 等待時間隨重試次數增加 (更長的等待時間)
+                    import time
+                    wait_time = 1.0 if attempt == 0 else (5.0 if attempt == 1 else 10.0)
+                    if attempt > 0:
+                        print(f"[INFO] XLS 讀取重試 {attempt + 1}/{max_retries}, 等待 {wait_time}秒...")
+                    time.sleep(wait_time)
+                    
+                    pythoncom.CoInitialize()
+                    
+                    # 處理 Excel 首次啟動的許可證問題
+                    try:
+                        import winreg
+                        reg_paths = [
+                            r"Software\Microsoft\Office\16.0\Excel\Security\Trusted Locations\Location0",
+                            r"Software\Microsoft\Office\15.0\Excel\Security\Trusted Locations\Location0",
+                            r"Software\Microsoft\Office\14.0\Excel\Security\Trusted Locations\Location0"
+                        ]
+                        for reg_path in reg_paths:
+                            try:
+                                key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, reg_path)
+                                winreg.SetValueEx(key, "AllowSubFolders", 0, winreg.REG_DWORD, 1)
+                                winreg.SetValueEx(key, "Path", 0, winreg.REG_SZ, os.path.dirname(abs_path))
+                                winreg.CloseKey(key)
+                            except:
+                                pass
+                    except:
+                        pass
+                    
+                    excel = win32.DispatchEx("Excel.Application")  # 使用 DispatchEx 創建新實例
+                    excel.Visible = False
+                    excel.DisplayAlerts = False
+                    excel.Interactive = False
+                    excel.ScreenUpdating = False
+                    excel.AskToUpdateLinks = False
+                    excel.AutomationSecurity = 3
+                    
+                    try:
+                        excel.EnableEvents = False
+                        excel.DisplayStartupDialog = False
+                    except:
+                        pass
+                    
+                    abs_path = os.path.abspath(file_path)
+                    wb = excel.Workbooks.Open(
+                        abs_path, 
+                        ReadOnly=True, 
+                        UpdateLinks=0,
+                        CorruptLoad=1
+                    )
+                    all_text = []
+                    
+                    for sheet_idx in range(1, wb.Sheets.Count + 1):
+                        sheet = wb.Sheets(sheet_idx)
+                        sheet_name = sheet.Name
+                        sheet_text = [f"=== 工作表: {sheet_name} ==="]
+                        
+                        # 獲取使用範圍
+                        used_range = sheet.UsedRange
+                        if used_range is not None:
+                            # 一次性讀取所有數據
+                            values = used_range.Value
+                            if values:
+                                # values 可能是單一值或二維 tuple
+                                if isinstance(values, tuple):
+                                    for row in values:
+                                        if isinstance(row, tuple):
+                                            row_values = [str(cell) for cell in row if cell is not None]
+                                        else:
+                                            row_values = [str(row)] if row is not None else []
+                                        if row_values:
+                                            sheet_text.append(" | ".join(row_values))
+                                else:
+                                    sheet_text.append(str(values))
+                        
+                        if len(sheet_text) > 1:
+                            all_text.append("\n".join(sheet_text))
+                    
+                    result = "\n\n".join(all_text)
+                    
+                    # 成功讀取後立即清理並返回
+                    try:
+                        if wb:
+                            wb.Close(False)
+                        if excel:
+                            excel.Quit()
+                            del excel
+                    except:
+                        pass
+                    
+                    try:
+                        pythoncom.CoUninitialize()
+                    except:
+                        pass
+                    
+                    return result
+                    
+                except Exception as e:
+                    error_msg = str(e)
+                    print(f"[WARNING] XLS 讀取嘗試 {attempt + 1}/{max_retries} 失敗: {error_msg}")
+                    
+                    # 檢查是否為 COM 呼叫被拒絕錯誤
+                    if "-2147418111" in error_msg or "接收者已拒絕" in error_msg:
+                        print(f"[INFO] 偵測到 COM 介面繁忙,將重試...")
+                    
+                finally:
+                    # 確保資源被釋放
+                    cleanup_attempts = 0
+                    while cleanup_attempts < 2:
+                        try:
+                            if wb is not None:
+                                wb.Close(False)
+                                wb = None
+                        except:
+                            pass
+                        
+                        try:
+                            if excel is not None:
+                                excel.Quit()
+                                del excel
+                                excel = None
+                        except:
+                            pass
+                        
+                        try:
+                            pythoncom.CoUninitialize()
+                            break  # 成功清理
+                        except:
+                            cleanup_attempts += 1
+                            if cleanup_attempts < 2:
+                                import time
+                                time.sleep(0.2)
+            
+            # 所有重試都失敗
+            return "讀取 XLS 失敗: Excel COM 接口無法正常運作,請稍後重試"
         
         return "錯誤: 無法讀取 XLS 文件。需要安裝 xlrd 或 pywin32"
 

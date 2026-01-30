@@ -61,9 +61,9 @@ def generate_single_work_report(user_name, user_data, template_file, output_form
         except Exception as e:
             print(f"[WARNING] Failed to read profile: {e}")
         
-        # 3. 讀取 Prompt 模板（使用運行時導入避免循環依賴）
+        # 3. 讀取 Prompt 模板（使用 utils.prompt_manager 避免循環依賴）
         try:
-            from app.routes import get_prompts_by_type
+            from app.utils.prompt_manager import get_prompts_by_type
             _, generate_prompt_template = get_prompts_by_type('work_report')
         except ImportError as e:
             print(f"[ERROR] 無法導入 get_prompts_by_type: {e}")

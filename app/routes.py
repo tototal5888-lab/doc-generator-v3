@@ -10,6 +10,14 @@ from .services.excel_parser import ExcelParser
 from .services.text_parser import TextParser
 from .utils.multi_user_handler import generate_multiple_work_reports
 
+# 導入 win32com 相關模組 (用於 XLS 轉換)
+try:
+    import win32com.client
+    import pythoncom
+    WIN32_AVAILABLE = True
+except ImportError:
+    WIN32_AVAILABLE = False
+
 bp = Blueprint('main', __name__)
 
 # 初始化服務 (在首次請求時或應用啟動時)
@@ -21,81 +29,7 @@ def get_ai_service():
         current_app.ai_service = AIService(current_app.config)
     return current_app.ai_service
 
-def get_prompts_by_type(doc_type):
-    """從 PROMPTS_CONFIG.md 讀取指定文檔類型的 Prompt
-    
-    Args:
-        doc_type: 文檔類型 ('system_doc', 'sop', 'work_report', 'sop_optimize')
-    
-    Returns:
-        tuple: (optimize_prompt, generate_prompt)
-               對於 sop_optimize，optimize_prompt 為 None
-    """
-    config_path = 'PROMPTS_CONFIG.md'
-    
-    if not os.path.exists(config_path):
-        return None, None
-    
-    try:
-        with open(config_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        
-        # 定義文檔類型對應的標題標記
-        type_headers = {
-            'system_doc': '# System Doc - 系統文檔',
-            'sop': '# SOP - 標準作業程序',
-            'work_report': '# Work Report - 工作報告',
-            'sop_optimize': '# SOP Optimize - SOP 優化'
-        }
-        
-        if doc_type not in type_headers:
-            return None, None
-        
-        # 找到對應文檔類型的區塊
-        type_header = type_headers[doc_type]
-        type_start = content.find(type_header)
-        
-        if type_start == -1:
-            return None, None
-        
-        # 找到下一個文檔類型的開始位置（即當前區塊的結束位置）
-        next_section = content.find('\n---\n', type_start)
-        if next_section == -1:
-            next_section = content.find('\n## 注意事項', type_start)
-        
-        if next_section == -1:
-            type_section = content[type_start:]
-        else:
-            type_section = content[type_start:next_section]
-        
-        # 提取優化需求 Prompt
-        optimize_prompt = None
-        if doc_type != 'sop_optimize':  # sop_optimize 沒有優化需求 Prompt
-            optimize_start = type_section.find('## 優化需求 Prompt')
-            if optimize_start != -1:
-                optimize_end = type_section.find('## 生成文檔 Prompt', optimize_start)
-                if optimize_end != -1:
-                    optimize_section = type_section[optimize_start:optimize_end]
-                    prompt_start = optimize_section.find('```prompt\n')
-                    prompt_end = optimize_section.rfind('```')
-                    if prompt_start != -1 and prompt_end != -1 and prompt_start < prompt_end:
-                        optimize_prompt = optimize_section[prompt_start + 10:prompt_end].strip()
-        
-        # 提取生成文檔 Prompt
-        generate_prompt = None
-        generate_start = type_section.find('## 生成文檔 Prompt')
-        if generate_start != -1:
-            generate_section = type_section[generate_start:]
-            prompt_start = generate_section.find('```prompt\n')
-            prompt_end = generate_section.rfind('```')
-            if prompt_start != -1 and prompt_end != -1 and prompt_start < prompt_end:
-                generate_prompt = generate_section[prompt_start + 10:prompt_end].strip()
-        
-        return optimize_prompt, generate_prompt
-        
-    except Exception as e:
-        print(f"[ERROR] Failed to read prompts for {doc_type}: {e}")
-        return None, None
+from .utils.prompt_manager import get_prompts_by_type
 
 @bp.route('/')
 def index():
@@ -1041,63 +975,163 @@ def extract_text():
             content = ""
             image_info = None
             
-            # 如果是 XLS，自動轉換為 XLSX（更穩定）
+            # 如果是 XLS,自動轉換為 XLSX(更穩定)
             if ext == 'xls':
-                print(f"[INFO] 檢測到 .xls 文件，嘗試自動轉換為 .xlsx...")
+                print(f"[INFO] 檢測到 .xls 文件,嘗試自動轉換為 .xlsx...")
                 converted_path = temp_path.replace('.xls', '.xlsx')
                 
-                try:
-                    # 嘗試使用 Excel COM 轉換
-                    import win32com.client as win32
-                    import pythoncom
-                    
+                conversion_successful = False
+                max_retries = 3
+                
+                for attempt in range(max_retries):
                     excel = None
                     wb = None
+                    
                     try:
+                        # 強制清理之前的 COM 狀態
+                        try:
+                            pythoncom.CoUninitialize()
+                        except:
+                            pass
+                        
+                        # 等待時間隨重試次數增加 (更長的等待時間)
+                        import time
+                        wait_time = 1.0 if attempt == 0 else (5.0 if attempt == 1 else 10.0)
+                        if attempt > 0:
+                            print(f"[INFO] XLS 轉換重試 {attempt + 1}/{max_retries}, 等待 {wait_time}秒...")
+                        else:
+                            print(f"[INFO] XLS 轉換嘗試 {attempt + 1}/{max_retries}, 等待 {wait_time}秒...")
+                        time.sleep(wait_time)
+                        
+                        # 初始化 COM
                         pythoncom.CoInitialize()
-                        excel = win32.DispatchEx("Excel.Application")
+                        
+                        # 處理 Excel 首次啟動的許可證問題
+                        try:
+                            import winreg
+                            # 設定註冊表以自動接受 Excel 許可證
+                            # 這會避免首次啟動時的許可證對話框
+                            reg_paths = [
+                                r"Software\Microsoft\Office\16.0\Excel\Security\Trusted Locations\Location0",
+                                r"Software\Microsoft\Office\15.0\Excel\Security\Trusted Locations\Location0",
+                                r"Software\Microsoft\Office\14.0\Excel\Security\Trusted Locations\Location0"
+                            ]
+                            for reg_path in reg_paths:
+                                try:
+                                    key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, reg_path)
+                                    winreg.SetValueEx(key, "AllowSubFolders", 0, winreg.REG_DWORD, 1)
+                                    winreg.SetValueEx(key, "Path", 0, winreg.REG_SZ, os.path.dirname(abs_temp_path))
+                                    winreg.CloseKey(key)
+                                except:
+                                    pass
+                        except:
+                            pass
+                        
+                        # 創建新的 Excel 實例
+                        excel = win32com.client.DispatchEx("Excel.Application")
                         excel.Visible = False
                         excel.DisplayAlerts = False
+                        excel.Interactive = False
+                        excel.ScreenUpdating = False
+                        excel.AskToUpdateLinks = False
+                        excel.AutomationSecurity = 3  # msoAutomationSecurityForceDisable
+                        
+                        # 嘗試設定以避免啟動畫面和許可證對話框
+                        try:
+                            excel.EnableEvents = False
+                            excel.DisplayStartupDialog = False
+                        except:
+                            pass
                         
                         abs_temp_path = os.path.abspath(temp_path)
-                        wb = excel.Workbooks.Open(abs_temp_path, ReadOnly=True, UpdateLinks=False)
+                        print(f"[INFO] 開啟 XLS 檔案: {abs_temp_path}")
+                        
+                        # 開啟檔案,避免更新連結和啟用巨集
+                        wb = excel.Workbooks.Open(
+                            abs_temp_path, 
+                            ReadOnly=True, 
+                            UpdateLinks=0,
+                            CorruptLoad=1
+                        )
                         
                         # 另存為 XLSX (51 = xlOpenXMLWorkbook)
                         abs_converted_path = os.path.abspath(converted_path)
+                        print(f"[INFO] 儲存為 XLSX: {abs_converted_path}")
                         wb.SaveAs(abs_converted_path, FileFormat=51)
+                        
+                        # 立即關閉工作簿
                         wb.Close(False)
+                        wb = None
+                        
+                        # 退出 Excel
                         excel.Quit()
+                        del excel
+                        excel = None
                         
                         print(f"[SUCCESS] 已成功轉換為 .xlsx 格式")
+                        conversion_successful = True
                         
-                        # 刪除原始 XLS 文件
+                        # 等待檔案系統釋放
+                        time.sleep(0.5)
+                        
+                        # 嘗試刪除原始 XLS 文件
                         try:
-                            import time
-                            time.sleep(0.2)
                             if os.path.exists(temp_path):
                                 os.remove(temp_path)
-                        except:
-                            pass
+                                print(f"[INFO] 已刪除原始 XLS 檔案")
+                        except Exception as del_err:
+                            print(f"[WARNING] 無法刪除臨時文件 {temp_path}: {del_err}")
+                            print(f"[INFO] 文件將在下次清理時移除")
                         
                         # 使用轉換後的文件
                         temp_path = converted_path
                         filename = os.path.basename(converted_path)
                         ext = 'xlsx'
                         
-                    finally:
-                        try:
-                            if wb:
-                                wb.Close(False)
-                            if excel:
-                                excel.Quit()
-                                del excel
-                        except:
-                            pass
-                        pythoncom.CoUninitialize()
+                        break  # 轉換成功,跳出重試循環
                         
-                except Exception as convert_error:
-                    print(f"[WARNING] XLS 轉換失敗: {convert_error}")
+                    except Exception as convert_error:
+                        error_msg = str(convert_error)
+                        print(f"[WARNING] XLS 轉換嘗試 {attempt + 1}/{max_retries} 失敗: {error_msg}")
+                        
+                        # 檢查是否為 COM 呼叫被拒絕錯誤
+                        if "-2147418111" in error_msg or "接收者已拒絕" in error_msg:
+                            print(f"[INFO] 偵測到 COM 介面繁忙,將重試...")
+                        
+                    finally:
+                        # 確保資源被釋放
+                        cleanup_attempts = 0
+                        while cleanup_attempts < 2:
+                            try:
+                                if wb is not None:
+                                    wb.Close(False)
+                                    wb = None
+                            except:
+                                pass
+                            
+                            try:
+                                if excel is not None:
+                                    excel.Quit()
+                                    del excel
+                                    excel = None
+                            except:
+                                pass
+                            
+                            try:
+                                pythoncom.CoUninitialize()
+                                break  # 成功清理
+                            except:
+                                cleanup_attempts += 1
+                                if cleanup_attempts < 2:
+                                    import time
+                                    time.sleep(0.2)
+                
+                # 如果轉換失敗,使用原始 XLS 文件
+                if not conversion_successful:
                     print("[INFO] 將使用原始 XLS 文件繼續處理")
+                    # 確保 temp_path 指向原始文件
+                    if not os.path.exists(temp_path):
+                        temp_path = temp_path  # 保持原始路徑
             
             # 如果是 PPTX，提取圖片
             if ext == 'pptx':
