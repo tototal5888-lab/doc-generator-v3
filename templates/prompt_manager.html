@@ -152,23 +152,30 @@
                 </div>
 
                 <!-- Action Buttons -->
-                <div class="flex gap-4 justify-end">
-                    <button class="btn btn-ghost" onclick="resetPrompts()">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        重置
-                    </button>
-                    <button class="btn btn-primary" onclick="savePrompts()">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                        </svg>
-                        儲存配置
-                    </button>
+                <div
+                    class="sticky bottom-0 left-0 right-0 bg-base-100 border-t-4 border-primary p-6 -mx-6 -mb-6 mt-8 shadow-lg">
+                    <div class="flex gap-4 justify-end items-center">
+                        <button class="btn btn-ghost" onclick="resetPrompts()">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            重置
+                        </button>
+                        <button class="btn btn-primary btn-lg gap-3 shadow-xl hover:shadow-2xl transition-all"
+                            onclick="savePrompts()">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                            </svg>
+                            <span class="text-lg font-bold">💾 儲存 Prompt 配置</span>
+                        </button>
+                    </div>
+                    <div class="text-center text-sm text-base-content/60 mt-3">
+                        💡 提示：修改完成後請記得點擊「儲存 Prompt 配置」按鈕
+                    </div>
                 </div>
             </div>
         </div>
