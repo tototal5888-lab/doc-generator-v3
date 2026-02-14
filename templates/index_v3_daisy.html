@@ -117,6 +117,37 @@
                                 </div>
                             </div>
 
+                            <!-- 人員確認界面 (Excel 多人員時顯示) -->
+                            <div id="users-confirmation-section" class="form-control w-full mb-4"
+                                style="display: none;">
+                                <label class="label">
+                                    <span class="label-text flex items-center gap-2 font-medium">
+                                        <span>👥</span> 請選擇要生成報告的人員
+                                    </span>
+                                </label>
+                                <div class="alert alert-info mb-3">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                        class="stroke-current shrink-0 w-6 h-6">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    <div class="text-sm">
+                                        系統已識別 Excel 中的多位人員,請勾選要生成報告的人員,然後點擊「確認並生成報告」
+                                    </div>
+                                </div>
+                                <div id="users-list" class="space-y-2 mb-3 max-h-64 overflow-y-auto">
+                                    <!-- 人員列表將由 JS 動態生成 -->
+                                </div>
+                                <div class="flex gap-2">
+                                    <button type="button" id="confirm-users-btn" class="btn btn-success flex-1">
+                                        ✅ 確認並生成報告
+                                    </button>
+                                    <button type="button" id="cancel-users-btn" class="btn btn-outline">
+                                        ❌ 取消
+                                    </button>
+                                </div>
+                            </div>
+
                             <!-- 需求描述 -->
                             <div class="form-control w-full mb-4">
                                 <label class="label">
@@ -714,6 +745,7 @@
     <script src="/static/js/optimize.js"></script>
     <script src="/static/js/generate.js"></script>
     <script src="/static/js/flowchart.js"></script>
+    <script src="/static/js/users_confirmation.js"></script>
 </body>
 
 </html>

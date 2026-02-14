@@ -98,9 +98,49 @@ class ExcelParser:
             for col in df.select_dtypes(['object']):
                 df[col] = df[col].astype(str).str.strip()
             
-            # 5. 分組
+            # 5. 分組 - 過濾無效的人員名稱
+            def is_valid_user_name(name):
+                """檢查是否為有效的人員名稱
+                
+                排除以下情況:
+                - Macro 開頭的測試數據
+                - Recover 等系統關鍵字
+                - nan, None 等空值
+                - 長度過短的名稱
+                - 不包含中文字元的名稱 (假設真實人名應該有中文)
+                """
+                if not name or not isinstance(name, str):
+                    return False
+                
+                name = str(name).strip()
+                
+                # 排除空值相關
+                if name.lower() in ['nan', 'none', '', 'null']:
+                    return False
+                
+                # 排除 Macro 開頭的測試數據
+                if name.startswith('Macro'):
+                    return False
+                
+                # 排除 Recover 等系統關鍵字
+                if name.lower() in ['recover', 'test', 'admin', 'system']:
+                    return False
+                
+                # 名稱長度至少要 2 個字元
+                if len(name) < 2:
+                    return False
+                
+                # 檢查是否包含至少一個中文字元 (真實人名應該有中文)
+                has_chinese = any('\u4e00' <= char <= '\u9fff' for char in name)
+                if not has_chinese:
+                    return False
+                
+                return True
+            
             users = df[target_col].unique().tolist()
             users = [str(u).strip() for u in users if str(u).strip()]
+            # 過濾無效的人員名稱
+            users = [u for u in users if is_valid_user_name(u)]
             users = sorted(list(set(users)))
             
             has_multiple_users = len(users) > 1
@@ -313,13 +353,46 @@ class ExcelParser:
         if not parsed_data or not parsed_data['records']:
             return {'has_multiple_users': False, 'users': [], 'data_by_user': {}, 'all_data': ''}
         
+        def is_valid_user_name(name):
+            """檢查是否為有效的人員名稱 (與 parse_with_pandas 使用相同邏輯)"""
+            if not name or not isinstance(name, str):
+                return False
+            
+            name = str(name).strip()
+            
+            # 排除空值相關
+            if name.lower() in ['nan', 'none', '', 'null']:
+                return False
+            
+            # 排除 Macro 開頭的測試數據
+            if name.startswith('Macro'):
+                return False
+            
+            # 排除 Recover 等系統關鍵字
+            if name.lower() in ['recover', 'test', 'admin', 'system']:
+                return False
+            
+            # 名稱長度至少要 2 個字元
+            if len(name) < 2:
+                return False
+            
+            # 檢查是否包含至少一個中文字元 (真實人名應該有中文)
+            has_chinese = any('\u4e00' <= char <= '\u9fff' for char in name)
+            if not has_chinese:
+                return False
+            
+            return True
+        
         headers = parsed_data['headers']
         records = parsed_data['records']
         
         users_set = set()
         for record in records:
             if record['user'] and record['user'].strip():
-                users_set.add(record['user'])
+                user_name = record['user']
+                # 使用過濾函數檢查人員名稱
+                if is_valid_user_name(user_name):
+                    users_set.add(user_name)
         
         users = sorted(list(users_set))
         has_multiple_users = len(users) > 1

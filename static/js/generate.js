@@ -70,6 +70,24 @@ async function generateDocument() {
             requestData.image_folder = window.extractedImageFolder;
         }
 
+        // 調試日誌：顯示當前 window 變數狀態
+        console.log('[DEBUG] generateDocument 開始執行');
+        console.log('[DEBUG] window.selectedUsers:', window.selectedUsers);
+        console.log('[DEBUG] window.excelTempFilename:', window.excelTempFilename);
+        console.log('[DEBUG] window.excelUsers:', window.excelUsers);
+
+        // 如果有選定的人員列表，添加到請求中
+        if (window.selectedUsers && window.excelTempFilename) {
+            requestData.selected_users = window.selectedUsers;
+            requestData.excel_temp_filename = window.excelTempFilename;
+            console.log('[INFO] ✅ 傳送選定人員:', window.selectedUsers);
+            console.log('[INFO] ✅ Excel 檔名:', window.excelTempFilename);
+        } else {
+            console.log('[WARNING] ❌ 沒有選定人員資訊');
+            console.log('[WARNING] selectedUsers 存在?', !!window.selectedUsers);
+            console.log('[WARNING] excelTempFilename 存在?', !!window.excelTempFilename);
+        }
+
         const response = await fetch(`${API_BASE_URL}/generate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -216,6 +234,27 @@ async function uploadOldDocument() {
 
         if (data.success) {
             document.getElementById('requirements').value = data.content;
+
+            // 檢查是否有人員資訊（Excel 工作報告）
+            if (data.users && data.users.length > 0) {
+                // 儲存 Excel 資訊供後續使用
+                window.excelTempFilename = data.excel_temp_filename;
+                window.excelUsers = data.users;
+
+                // 顯示人員確認界面
+                showUsersConfirmation(data.users, data.has_multiple_users);
+
+                // 更新上傳區域顯示
+                dropArea.innerHTML = `
+                    <div class="text-center">
+                        <span class="text-5xl">📋</span>
+                        <div class="mt-2 font-medium text-success">已上傳: ${file.name}</div>
+                        <div class="text-sm opacity-60 mt-1">已識別 ${data.users.length} 位人員</div>
+                        <div class="text-xs opacity-40 mt-1">請向下查看人員列表並確認</div>
+                    </div>
+                `;
+                return;
+            }
 
             // 顯示已上傳的檔案名稱和訊息（不彈窗）
             let message = '內容提取成功';
