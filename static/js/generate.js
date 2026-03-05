@@ -27,7 +27,9 @@ async function generateDocument() {
     }
 
     // 檢查是否已執行 AI 優化
-    if (!hasOptimized && requirements.trim()) {
+    // Excel 多人員流程不需要此提示
+    const isExcelFlow = window.excelUsers && window.excelUsers.length > 0;
+    if (!hasOptimized && !isExcelFlow && requirements.trim()) {
         const confirmed = confirm(
             '⚠️ 提醒：您尚未執行 AI 優化需求\n\n' +
             '建議先點擊「✨ AI 優化需求」按鈕，可以幫助您：\n' +
@@ -75,6 +77,13 @@ async function generateDocument() {
         console.log('[DEBUG] window.selectedUsers:', window.selectedUsers);
         console.log('[DEBUG] window.excelTempFilename:', window.excelTempFilename);
         console.log('[DEBUG] window.excelUsers:', window.excelUsers);
+
+        // 備援邏輯：如果 selectedUsers 未設定（使用者跳過確認按鈕直接生成），
+        // 但仍有 excelUsers，則自動使用全部人員
+        if (!window.selectedUsers && window.excelUsers && window.excelUsers.length > 0) {
+            window.selectedUsers = window.excelUsers.map(u => u.name || u);
+            console.log('[INFO] 備援：自動使用全部 Excel 人員:', window.selectedUsers);
+        }
 
         // 如果有選定的人員列表，添加到請求中
         if (window.selectedUsers && window.excelTempFilename) {

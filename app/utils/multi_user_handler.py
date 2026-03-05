@@ -93,22 +93,22 @@ def generate_single_work_report(user_name, user_data, template_file, output_form
         generated_content, usage_info = ai_service.generate_content(full_prompt)
         
         # DEBUG: 檢查 AI 生成的會議報告內容
-        if '本月參與會議報告' in generated_content or '本月参与会议报告' in generated_content:
-            print(f"[DEBUG-AI-OUTPUT] {user_name}: AI 生成的內容包含會議報告章節")
-            # 提取會議報告部分
-            start_idx = generated_content.find('本月參與會議報告')
+        if '本月參與會議' in generated_content or '本月参与会议' in generated_content:
+            print(f"[DEBUG-AI-OUTPUT] {user_name}: AI 生成的內容包含會議章節")
+            # 提取會議部分
+            start_idx = generated_content.find('本月參與會議')
             if start_idx == -1:
-                start_idx = generated_content.find('本月参与会议报告')
+                start_idx = generated_content.find('本月参与会议')
             if start_idx != -1:
                 # 找到下一個 ## 或文檔結尾
                 end_idx = generated_content.find('\n##', start_idx + 20)
                 if end_idx == -1:
                     end_idx = start_idx + 800  # 顯示最多 800 字元
                 meeting_section = generated_content[start_idx:end_idx]
-                print(f"[DEBUG-AI-OUTPUT] {user_name}: 會議報告章節內容（前800字元）：")
+                print(f"[DEBUG-AI-OUTPUT] {user_name}: 會議章節內容（前800字元）：")
                 print(meeting_section[:800])
         else:
-            print(f"[DEBUG-AI-OUTPUT] {user_name}: AI 生成的內容不包含會議報告章節")
+            print(f"[DEBUG-AI-OUTPUT] {user_name}: AI 生成的內容不包含會議章節")
         
         # 6. 格式轉換與保存
         datetime_str = datetime.now().strftime('%Y%m%d%H%M%S')
