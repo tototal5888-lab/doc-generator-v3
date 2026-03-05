@@ -31,12 +31,7 @@ def _set_cell_border(cell, border_color="FFFFFF", border_width='12700'):
         SubElement(ln, 'a:headEnd', type='none', w='med', len='med')
         SubElement(ln, 'a:tailEnd', type='none', w='med', len='med')
 
-from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
+
 
 
 def parse_markdown_table(lines, start_index):
@@ -593,22 +588,79 @@ class FormatConverter:
                     
                     # 檢查是否為工作報告表格（包含「主要工作內容」欄位）
                     column_widths = None
+                    is_work_report = False
                     if any('主要工作內容' in str(h) for h in headers):
+                        is_work_report = True
                         # 工作報告表格：6個欄位 (項次, 專案名稱, 主要工作內容, 進度%, 預計完成日, 需求人)
                         # 自訂寬度比例：項次 6%, 專案名稱 12%, 主要工作內容 55%, 進度% 6%, 預計完成日 12%, 需求人 8%
                         column_widths = [0.06, 0.12, 0.55, 0.06, 0.12, 0.09]  # 總和 1.00
                         print(f"[INFO] 檢測到工作報告表格，使用自訂欄位寬度: {column_widths}")
                     
-                    # 刪除之前創建的 TextBox（如果存在）
-                    # 在當前投影片中創建原生表格（使用模板字體大小）
-                    create_pptx_table(current_slide, headers, rows, 
-                                      left=Inches(0.5), top=Inches(1.5), width=Inches(9.0),
-                                      header_font_size=content_font_size, content_font_size=content_font_size,
-                                      column_widths=column_widths)
-                    # 跳過已處理的表格行
-                    line_index = new_index
-                    tf = None  # 表格後不再使用原有的 TextFrame
-                    continue
+                    # 工作報告表格自動分頁邏輯
+                    if is_work_report and len(rows) > 0:
+                        MAX_ROWS_PER_PAGE = 6  # 每頁最多顯示 6 個資料行,平衡頁數和閱讀空間
+                        
+                        # 計算需要的頁數
+                        total_pages = (len(rows) + MAX_ROWS_PER_PAGE - 1) // MAX_ROWS_PER_PAGE
+                        
+                        if total_pages > 1:
+                            print(f"[INFO] 工作報告表格包含 {len(rows)} 行，將分為 {total_pages} 頁")
+                        
+                        # 保存原始標題
+                        original_title = current_slide.shapes.title.text if current_slide.shapes.title else "本月工作報告"
+                        
+                        # 分頁處理
+                        for page_num in range(total_pages):
+                            start_idx = page_num * MAX_ROWS_PER_PAGE
+                            end_idx = min(start_idx + MAX_ROWS_PER_PAGE, len(rows))
+                            page_rows = rows[start_idx:end_idx]
+                            
+                            # 如果是第一頁，使用當前投影片；否則創建新投影片
+                            if page_num > 0:
+                                current_slide = prs.slides.add_slide(bullet_slide_layout)
+                                shapes = current_slide.shapes
+                                
+                                # 設定標題 (加上頁碼)
+                                title_text = f"{original_title} ({page_num + 1}/{total_pages})"
+                                
+                                if shapes.title:
+                                    shapes.title.text = title_text
+                                    # 套用標題樣式
+                                    try:
+                                        shapes.title.top = Inches(0.2)
+                                        shapes.title.left = Inches(0.5)
+                                        shapes.title.width = Inches(9.0)
+                                        shapes.title.height = Inches(1.0)
+                                        shapes.title.text_frame.word_wrap = True
+                                        for paragraph in shapes.title.text_frame.paragraphs:
+                                            paragraph.font.size = Pt(32)
+                                            paragraph.font.bold = True
+                                    except Exception as e:
+                                        print(f"[WARNING] 無法調整標題樣式: {e}")
+                                    print(f"[DEBUG] 創建第 {page_num + 1} 頁，標題: {title_text}")
+                            
+                            # 在投影片中創建表格
+                            create_pptx_table(current_slide, headers, page_rows,
+                                              left=Inches(0.5), top=Inches(1.5), width=Inches(9.0),
+                                              header_font_size=content_font_size, 
+                                              content_font_size=content_font_size,
+                                              column_widths=column_widths)
+                        
+                        # 跳過已處理的表格行
+                        line_index = new_index
+                        tf = None
+                        continue
+                    else:
+                        # 非工作報告表格或資料行數不超過限制，使用原有邏輯
+                        # 在當前投影片中創建原生表格（使用模板字體大小）
+                        create_pptx_table(current_slide, headers, rows, 
+                                          left=Inches(0.5), top=Inches(1.5), width=Inches(9.0),
+                                          header_font_size=content_font_size, content_font_size=content_font_size,
+                                          column_widths=column_widths)
+                        # 跳過已處理的表格行
+                        line_index = new_index
+                        tf = None  # 表格後不再使用原有的 TextFrame
+                        continue
                 
             # 內容點
             if current_slide and (line.startswith('- ') or line.startswith('* ')):
@@ -633,6 +685,17 @@ class FormatConverter:
     @staticmethod
     def markdown_to_pdf(content, doc_config, output_path):
         """將Markdown轉換為PDF"""
+        
+        # 導入 reportlab (延遲導入，避免未安裝時影響其他功能)
+        try:
+            from reportlab.lib.pagesizes import letter
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib.units import inch
+            from reportlab.pdfbase import pdfmetrics
+            from reportlab.pdfbase.ttfonts import TTFont
+        except ImportError:
+            raise ImportError("PDF 生成功能需要安裝 reportlab。請執行: pip install reportlab")
         
         # 註冊中文字體 (如果有的話，否則使用默認)
         # 這裡假設系統有微軟正黑體，如果沒有可能需要調整

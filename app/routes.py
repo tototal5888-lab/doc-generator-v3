@@ -430,137 +430,69 @@ def generate_document():
         output_format = data.get('output_format', 'pptx')
         image_folder_name = data.get('image_folder')  # 從前端獲取圖片文件夾名稱
         
-        # 特殊處理：檢查是否為工作報告 Excel 並需要多人員拆分
-        upload_folder = current_app.config['UPLOAD_FOLDER']
-        excel_file_path = None
+        # 新增：接收選定的人員列表和 Excel 臨時檔名
+        selected_users = data.get('selected_users')  # 來自前端的選定人員列表
+        excel_temp_filename = data.get('excel_temp_filename')  # 臨時 Excel 檔名
         
-        # 方式 1：如果 user_requirements 看起來像檔名，檢查該文件
-        if doc_type == 'work_report' and user_requirements:
-            if user_requirements.endswith(('.xlsx', '.xls')):
-                req_file_path = os.path.join(upload_folder, user_requirements)
-                if os.path.exists(req_file_path):
-                    excel_file_path = req_file_path
-                    print(f"[INFO] 檢測到 Excel 檔名: {user_requirements}")
+        print(f"[INFO] === 生成文檔請求 ===")
+        print(f"[INFO] 文檔類型: {doc_type}")
+        print(f"[INFO] 選定人員: {selected_users}")
+        print(f"[INFO] Excel 檔名: {excel_temp_filename}")
         
-        # 方式 2：查找 uploads 資料夾中最新的 Excel 文件（用戶上傳後的情況）
-        if not excel_file_path and doc_type == 'work_report':
-            try:
-                # 查找所有 temp_*.xlsx 和 temp_*.xls 文件
-                import glob
-                excel_patterns = [
-                    os.path.join(upload_folder, 'temp_*.xlsx'),
-                    os.path.join(upload_folder, 'temp_*.xls')
-                ]
-                excel_files = []
-                for pattern in excel_patterns:
-                    excel_files.extend(glob.glob(pattern))
-                
-                # 找到最新的文件
-                if excel_files:
-                    excel_file_path = max(excel_files, key=os.path.getmtime)
-                    print(f"[INFO] 找到最新的 Excel 文件: {excel_file_path}")
-            except Exception as e:
-                print(f"[WARNING] 查找 Excel 文件失敗: {e}")
-        
-        # 如果找到 Excel 文件，嘗試多人員處理
-        if excel_file_path and os.path.exists(excel_file_path):
-            print(f"[DEBUG] ========== 開始 Excel 多人員檢測流程 ==========")
-            print(f"[DEBUG] Excel 檔案路徑: {excel_file_path}")
-            print(f"[DEBUG] 檔案大小: {os.path.getsize(excel_file_path)} bytes")
-            print(f"[DEBUG] 文檔類型: {doc_type}")
-            print(f"[DEBUG] 模板檔案: {template_file}")
-            print(f"[DEBUG] 輸出格式: {output_format}")
+        # 如果有選定的人員列表，直接使用它（優先級最高）
+        if selected_users and excel_temp_filename and doc_type == 'work_report':
+            upload_folder = current_app.config['UPLOAD_FOLDER']
+            excel_file_path = os.path.join(upload_folder, excel_temp_filename)
             
-            try:
-                # 嘗試自動轉換 XLS -> XLSX (對於多人員檢測流程)
-                if excel_file_path.lower().endswith('.xls'):
-                    print(f"[INFO] 檢測到 XLS 文件，嘗試轉換為 XLSX 以獲得更穩定的解析: {excel_file_path}")
-                    xlsx_path = excel_file_path.replace('.xls', '.xlsx')
+            print("[INFO] ========== 使用用戶選定的人員列表 ==========")
+            print(f"[INFO] Excel 檔案: {excel_file_path}")
+            print(f"[INFO] 選定人員數: {len(selected_users)}")
+            print(f"[INFO] 人員列表: {selected_users}")
+            
+            if os.path.exists(excel_file_path):
+                try:
+                    # 解析 Excel
+                    excel_data = ExcelParser.parse_work_report_excel(excel_file_path)
                     
-                    # 如果 XLSX 已經存在（無論是否由 extract_text 生成），優先使用
-                    if os.path.exists(xlsx_path):
-                        print(f"[INFO] 發現對應的 XLSX 文件，切換使用: {xlsx_path}")
-                        excel_file_path = xlsx_path
-                    else:
-                        # 嘗試轉換
-                        try:
-                            import win32com.client as win32
-                            import pythoncom
-                            
-                            excel = None
-                            wb = None
-                            try:
-                                pythoncom.CoInitialize()
-                                excel = win32.DispatchEx("Excel.Application")
-                                excel.Visible = False
-                                excel.DisplayAlerts = False
-                                
-                                abs_path = os.path.abspath(excel_file_path)
-                                abs_out_path = os.path.abspath(xlsx_path)
-                                
-                                wb = excel.Workbooks.Open(abs_path, ReadOnly=True, UpdateLinks=False)
-                                wb.SaveAs(abs_out_path, FileFormat=51) # 51 = xlOpenXMLWorkbook
-                                wb.Close(False)
-                                excel.Quit()
-                                
-                                print(f"[SUCCESS] 成功將 XLS 轉換為 XLSX，切換使用: {xlsx_path}")
-                                excel_file_path = xlsx_path
-                                
-                                # 刪除原始 XLS 以避免混淆（可選）
-                                try:
-                                    import time
-                                    time.sleep(0.5)
-                                    if os.path.exists(excel_file_path.replace('.xlsx', '.xls')):
-                                        # 這裡要注意不要刪錯，因為現在 excel_file_path 已經是 xlsx
-                                        pass
-                                except:
-                                    pass
-                                    
-                            except Exception as com_err:
-                                print(f"[WARNING] 多人員檢測時 XLS 轉換失敗: {com_err}")
-                            finally:
-                                try:
-                                    if wb: wb.Close(False)
-                                    if excel: excel.Quit()
-                                except: pass
-                                pythoncom.CoUninitialize()
-                        except Exception as e:
-                            print(f"[WARNING] 轉換過程發生錯誤: {e}")
-
-                print(f"[INFO] 開始解析 Excel: {excel_file_path}")
-                excel_data = ExcelParser.parse_work_report_excel(excel_file_path)
-                
-                print(f"[INFO] ========== Excel 解析結果 ==========")
-                print(f"[INFO] has_multiple_users: {excel_data['has_multiple_users']}")
-                print(f"[INFO] 人員數量: {len(excel_data['users'])}")
-                print(f"[INFO] 人員列表: {excel_data['users']}")
-                print(f"[INFO] data_by_user keys: {list(excel_data.get('data_by_user', {}).keys())}")
-                
-                if excel_data['has_multiple_users']:
-                    # 多人員：呼叫多人員處理函數
-                    print(f"[INFO] ========== 啟動多人員處理流程 ==========")
-                    print(f"[INFO] 檢測到多人員({len(excel_data['users'])}位)，準備生成多個簡報")
-                    print(f"[INFO] 模板: {template_file}, 格式: {output_format}")
+                    # 過濾出選定的人員
+                    filtered_data = {
+                        'has_multiple_users': len(selected_users) > 1,
+                        'users': selected_users,
+                        'data_by_user': {
+                            user: excel_data['data_by_user'][user]
+                            for user in selected_users
+                            if user in excel_data['data_by_user']
+                        },
+                        'all_data': excel_data.get('all_data', '')
+                    }
                     
-                    result = generate_multiple_work_reports(excel_data, template_file, output_format, image_folder_name)
+                    print(f"[INFO] 過濾後的人員數: {len(filtered_data['users'])}")
+                    print(f"[INFO] 開始為選定人員生成報告...")
                     
-                    print(f"[INFO] ========== 多人員處理完成 ==========")
-                    print(f"[INFO] 返回結果類型: {type(result)}")
+                    # 使用過濾後的資料生成報告
+                    result = generate_multiple_work_reports(filtered_data, template_file, output_format, image_folder_name)
+                    
+                    # 生成完成後，嘗試刪除臨時 Excel 檔案
+                    try:
+                        if os.path.exists(excel_file_path):
+                            os.remove(excel_file_path)
+                            print(f"[INFO] 已刪除臨時 Excel 檔案: {excel_file_path}")
+                    except Exception as e:
+                        print(f"[WARNING] 無法刪除臨時 Excel 檔案: {e}")
                     
                     return result
-                else:
-                    print(f"[INFO] 單人員或無人員欄位，使用標準流程")
-            except Exception as e:
-                print(f"[ERROR] ========== Excel 多人員檢測失敗 ==========")
-                print(f"[ERROR] 錯誤訊息: {e}")
-                print(f"[ERROR] 錯誤類型: {type(e).__name__}")
-                import traceback
-                traceback.print_exc()
-                print(f"[ERROR] ========== 錯誤堆疊結束 ==========")
-                # 不要中斷，讓程序繼續執行標準流程
+                except Exception as e:
+                    print(f"[ERROR] 使用選定人員列表生成報告失敗: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    return jsonify({'success': False, 'error': f'生成報告失敗: {str(e)}'}), 500
+            else:
+                print(f"[ERROR] Excel 檔案不存在: {excel_file_path}")
+                return jsonify({'success': False, 'error': 'Excel 檔案不存在，請重新上傳'}), 404
+        
         
         # 方式 3：檢查文字檔是否包含多人員標記
-        if doc_type == 'work_report' and not excel_file_path and user_requirements:
+        if doc_type == 'work_report' and user_requirements:
             try:
                 print(f"[INFO] 開始分析文字內容是否包含多人員標記")
                 text_data = TextParser.parse_work_report_text(user_requirements)
@@ -1158,19 +1090,65 @@ def extract_text():
                 # 其他格式使用原有邏輯
                 content = FileProcessor.extract_text(temp_path)
             
+            # 如果是 Excel 檔案，嘗試解析人員資訊
+            should_delete_temp = True  # 預設刪除臨時檔案
+            users_info = None
+            has_multiple_users = False
+            excel_temp_filename = None
+            
+            if ext in ['xlsx', 'xls']:
+                try:
+                    print(f"[DEBUG] ==================== Excel 人員解析開始 ====================")
+                    print(f"[DEBUG] Excel 檔案路徑: {temp_path}")
+                    print(f"[DEBUG] 檔案是否存在: {os.path.exists(temp_path)}")
+                    
+                    excel_data = ExcelParser.parse_work_report_excel(temp_path)
+                    
+                    print(f"[DEBUG] Excel 解析結果: {bool(excel_data)}")
+                    if excel_data:
+                        print(f"[DEBUG] Excel 的 keys: {excel_data.keys()}")
+                        print(f"[DEBUG] 是否有 users: {excel_data.get('users')}")
+                    
+                    if excel_data and excel_data.get('users'):
+                        users = excel_data['users']
+                        print(f"[INFO] ✅ 成功識別出 {len(users)} 位人員: {users}")
+                        
+                        # 構建人員資訊列表
+                        users_info = []
+                        for user in users:
+                            user_data = excel_data['data_by_user'].get(user, '')
+                            users_info.append({
+                                'name': user,
+                                'data_count': len(user_data),
+                                'selected': True  # 預設選中
+                            })
+                        
+                        has_multiple_users = excel_data.get('has_multiple_users', False)
+                        excel_temp_filename = os.path.basename(temp_path)
+                        
+                        # 如果有人員資訊，保留臨時檔案供後續使用
+                        should_delete_temp = False
+                        print(f"[INFO] 保留臨時 Excel 檔案供後續使用: {excel_temp_filename}")
+                except Exception as e:
+                    print(f"[INFO] Excel 人員解析失敗（將使用標準文字提取）: {e}")
+                    import traceback
+                    traceback.print_exc()
+            
             # 嘗試刪除臨時文件（容錯處理）
-            try:
-                # 添加短暫延遲，讓文件句柄完全釋放
-                import time
-                time.sleep(0.1)
-                if os.path.exists(temp_path):
-                    os.remove(temp_path)
-            except PermissionError as pe:
-                # Windows 文件鎖定問題，記錄警告但不中斷
-                print(f"[WARNING] 無法刪除臨時文件 {temp_path}: {pe}")
-                print("[INFO] 文件將在下次清理時移除")
-            except Exception as e:
-                print(f"[WARNING] 刪除臨時文件時發生錯誤: {e}")
+            if should_delete_temp:
+                try:
+                    # 添加短暫延遲，讓文件句柄完全釋放
+                    import time
+                    time.sleep(0.1)
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+                        print(f"[INFO] 已刪除臨時檔案: {temp_path}")
+                except PermissionError as pe:
+                    # Windows 文件鎖定問題，記錄警告但不中斷
+                    print(f"[WARNING] 無法刪除臨時文件 {temp_path}: {pe}")
+                    print("[INFO] 文件將在下次清理時移除")
+                except Exception as e:
+                    print(f"[WARNING] 刪除臨時文件時發生錯誤: {e}")
             
             response_data = {
                 "success": True,
@@ -1185,6 +1163,17 @@ def extract_text():
                     'folder': os.path.basename(image_info['folder'])  # 只返回文件夾名稱
                 }
             
+            # 如果有人員資訊，添加到響應中
+            if users_info:
+                response_data['users'] = users_info
+                response_data['has_multiple_users'] = has_multiple_users
+                response_data['excel_temp_filename'] = excel_temp_filename
+                print(f"[INFO] ✅ 返回 {len(users_info)} 位人員資訊給前端")
+                print(f"[DEBUG] 人員資訊詳情: {users_info}")
+            else:
+                print(f"[DEBUG] ❌ 沒有人員資訊返回")
+            
+            print(f"[DEBUG] 最終 response_data keys: {response_data.keys()}")
             return jsonify(response_data)
             
         except Exception as e:
