@@ -11,6 +11,11 @@ async function loadConfig() {
         document.getElementById('api-type').value = config.api_type || 'gemini';
         document.getElementById('openai-model').value = config.openai_model || 'gpt-4o-mini';
 
+        const deepseekModelEl = document.getElementById('deepseek-model');
+        if (deepseekModelEl) {
+            deepseekModelEl.value = config.deepseek_model || 'deepseek-chat';
+        }
+
         // 根據選擇的 API 類型更新顯示
         updateModelOptions();
     } catch (error) {
@@ -24,7 +29,8 @@ async function loadConfig() {
 async function saveModelConfig() {
     const config = {
         api_type: document.getElementById('api-type').value,
-        openai_model: document.getElementById('openai-model').value
+        openai_model: document.getElementById('openai-model').value,
+        deepseek_model: document.getElementById('deepseek-model') ? document.getElementById('deepseek-model').value : 'deepseek-chat'
     };
 
     try {

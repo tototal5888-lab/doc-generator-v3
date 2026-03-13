@@ -379,8 +379,9 @@
                         <div class="text-sm">
                             API 密鑰現在由 <code class="bg-base-300 px-2 py-1 rounded">.env</code> 文件統一管理。
                             請在伺服器端的 <code class="bg-base-300 px-2 py-1 rounded">.env</code> 文件中配置
-                            <code class="bg-base-300 px-2 py-1 rounded">GEMINI_API_KEY</code> 和
-                            <code class="bg-base-300 px-2 py-1 rounded">OPENAI_API_KEY</code>。
+                            <code class="bg-base-300 px-2 py-1 rounded">GEMINI_API_KEY</code>、
+                            <code class="bg-base-300 px-2 py-1 rounded">OPENAI_API_KEY</code> 或
+                            <code class="bg-base-300 px-2 py-1 rounded">DEEPSEEK_API_KEY</code>。
                         </div>
                     </div>
                 </div>
@@ -415,6 +416,7 @@
                     <select id="api-type" class="select select-bordered w-full" onchange="updateModelOptions()">
                         <option value="gemini">Google Gemini 2.0 Flash (免費額度高)</option>
                         <option value="openai">OpenAI GPT (需付費)</option>
+                        <option value="deepseek">DeepSeek (性價比高)</option>
                         <option value="mock">模擬環境 (測試用)</option>
                     </select>
                     <label class="label">
@@ -438,6 +440,22 @@
                     </select>
                     <label class="label">
                         <span class="label-text-alt" id="model-hint">僅在選擇 OpenAI 引擎時生效</span>
+                    </label>
+                </div>
+
+                <!-- DeepSeek 模型 -->
+                <div id="deepseek-model-group" class="form-control w-full mb-4" style="display: none;">
+                    <label class="label">
+                        <span class="label-text flex items-center gap-2 font-medium">
+                            <span>🐋</span> DeepSeek 模型
+                        </span>
+                    </label>
+                    <select id="deepseek-model" class="select select-bordered w-full">
+                        <option value="deepseek-chat" selected>DeepSeek-V3 (推薦、性價比高)</option>
+                        <option value="deepseek-reasoner">DeepSeek-R1 (推理增強)</option>
+                    </select>
+                    <label class="label">
+                        <span class="label-text-alt">僅在選擇 DeepSeek 引擎時生效</span>
                     </label>
                 </div>
 

@@ -65,16 +65,22 @@ function clearForm() {
 function updateModelOptions() {
     const apiType = document.getElementById('api-type').value;
     const openaiModelGroup = document.getElementById('openai-model-group');
+    const deepseekModelGroup = document.getElementById('deepseek-model-group');
     const apiTypeHint = document.getElementById('api-type-hint');
+
+    // 先全部隱藏
+    openaiModelGroup.style.display = 'none';
+    if (deepseekModelGroup) deepseekModelGroup.style.display = 'none';
 
     if (apiType === 'openai') {
         openaiModelGroup.style.display = 'block';
         apiTypeHint.textContent = '使用 OpenAI GPT 模型,需要有效的 API Key';
     } else if (apiType === 'gemini') {
-        openaiModelGroup.style.display = 'none';
         apiTypeHint.textContent = '使用 Google Gemini 2.0 Flash,免費額度高';
+    } else if (apiType === 'deepseek') {
+        if (deepseekModelGroup) deepseekModelGroup.style.display = 'block';
+        apiTypeHint.textContent = '使用 DeepSeek 模型,性價比高,需要有效的 API Key';
     } else if (apiType === 'mock') {
-        openaiModelGroup.style.display = 'none';
         apiTypeHint.textContent = '模擬模式,不調用真實 API,用於測試';
     }
 }

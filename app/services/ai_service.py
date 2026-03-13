@@ -32,10 +32,14 @@ class AIService:
             config['gemini_api_key'] = os.environ.get('GEMINI_API_KEY')
         if os.environ.get('OPENAI_API_KEY'):
             config['openai_api_key'] = os.environ.get('OPENAI_API_KEY')
+        if os.environ.get('DEEPSEEK_API_KEY'):
+            config['deepseek_api_key'] = os.environ.get('DEEPSEEK_API_KEY')
         if os.environ.get('API_TYPE'):
             config['api_type'] = os.environ.get('API_TYPE')
         if os.environ.get('OPENAI_MODEL'):
             config['openai_model'] = os.environ.get('OPENAI_MODEL')
+        if os.environ.get('DEEPSEEK_MODEL'):
+            config['deepseek_model'] = os.environ.get('DEEPSEEK_MODEL')
         
         return config
 
@@ -172,6 +176,76 @@ class AIService:
         except Exception as e:
             raise Exception(f"OpenAI API 調用失敗: {str(e)}")
 
+    def call_deepseek_api(self, prompt):
+        """調用 DeepSeek API（相容 OpenAI 格式）"""
+        api_key = self.api_config.get('deepseek_api_key')
+        if not api_key:
+            raise Exception("未配置 DeepSeek API Key")
+
+        model = self.api_config.get('deepseek_model', 'deepseek-chat')
+
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}"
+        }
+
+        payload = {
+            "model": model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "你是一個專業的文檔生成助手，擅長撰寫各種技術文檔、報告和 SOP。"
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            "temperature": 0.7
+        }
+
+        try:
+            response = requests.post(
+                "https://api.deepseek.com/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=120
+            )
+
+            if response.status_code != 200:
+                raise Exception(f"DeepSeek API Error: {response.text}")
+
+            result = response.json()
+            content = result['choices'][0]['message']['content']
+
+            # 計算 token 使用量
+            usage = result.get('usage', {})
+            input_tokens = usage.get('prompt_tokens', 0)
+            output_tokens = usage.get('completion_tokens', 0)
+
+            # DeepSeek 定價（每 1M tokens，美元）：deepseek-chat 輸入 $0.14，輸出 $0.28
+            deepseek_pricing = {
+                'deepseek-chat': {'input': 0.14, 'output': 0.28},
+                'deepseek-reasoner': {'input': 0.55, 'output': 2.19},
+            }
+            pricing = deepseek_pricing.get(model, {'input': 0.14, 'output': 0.28})
+            cost = (input_tokens / 1000000 * pricing['input']) + \
+                   (output_tokens / 1000000 * pricing['output'])
+
+            log_cost_to_file(model, input_tokens, output_tokens, cost)
+
+            usage_info = {
+                "model": model,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "cost": cost
+            }
+
+            return content, usage_info
+
+        except Exception as e:
+            raise Exception(f"DeepSeek API 調用失敗: {str(e)}")
+
     def call_mock_api(self, prompt):
         """調用模擬 API (不消耗額度)"""
         time.sleep(1) # 模擬延遲
@@ -209,6 +283,8 @@ class AIService:
             return self.call_gemini_api(prompt)
         elif api_type == 'openai':
             return self.call_openai_api(prompt)
+        elif api_type == 'deepseek':
+            return self.call_deepseek_api(prompt)
         elif api_type == 'mock':
             return self.call_mock_api(prompt)
         else:
