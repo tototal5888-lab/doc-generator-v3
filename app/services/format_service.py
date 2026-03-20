@@ -598,7 +598,7 @@ class FormatConverter:
                     
                     # 工作報告表格自動分頁邏輯
                     if is_work_report and len(rows) > 0:
-                        MAX_ROWS_PER_PAGE = 6  # 每頁最多顯示 6 個資料行,平衡頁數和閱讀空間
+                        MAX_ROWS_PER_PAGE = 8  # 每頁最多顯示 8 個專案（工作內容多時列高較高，超過即分頁）
                         
                         # 計算需要的頁數
                         total_pages = (len(rows) + MAX_ROWS_PER_PAGE - 1) // MAX_ROWS_PER_PAGE
@@ -616,7 +616,26 @@ class FormatConverter:
                             page_rows = rows[start_idx:end_idx]
                             
                             # 如果是第一頁，使用當前投影片；否則創建新投影片
-                            if page_num > 0:
+                            if page_num == 0:
+                                shapes = current_slide.shapes
+                                # 有多頁時，第一頁標題也加 (1/N)
+                                if total_pages > 1:
+                                    title_text = f"{original_title} (1/{total_pages})"
+                                    if shapes.title:
+                                        shapes.title.text = title_text
+                                        try:
+                                            shapes.title.top = Inches(0.2)
+                                            shapes.title.left = Inches(0.5)
+                                            shapes.title.width = Inches(9.0)
+                                            shapes.title.height = Inches(1.0)
+                                            shapes.title.text_frame.word_wrap = True
+                                            for paragraph in shapes.title.text_frame.paragraphs:
+                                                paragraph.font.size = Pt(32)
+                                                paragraph.font.bold = True
+                                        except Exception as e:
+                                            print(f"[WARNING] 無法調整標題樣式: {e}")
+                                        print(f"[DEBUG] 第 1 頁標題更新為: {title_text}")
+                            else:
                                 current_slide = prs.slides.add_slide(bullet_slide_layout)
                                 shapes = current_slide.shapes
                                 
