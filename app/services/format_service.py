@@ -136,11 +136,10 @@ def create_pptx_table(slide, headers, rows, left=Inches(0.5), top=Inches(1.5), w
             text = header_text
             if "主要工作內容" in text:
                 text = text.replace("(", "\n(").replace("（", "\n（")
-            elif "預計完成日" in text:
-                text = text.replace("完成", "完成\n")
             
             cell.text = text
             # 設定表頭樣式（使用傳入的字體大小）
+            cell.text_frame.word_wrap = False
             paragraph = cell.text_frame.paragraphs[0]
             paragraph.font.bold = True
             paragraph.font.size = header_font_size
@@ -534,10 +533,10 @@ class FormatConverter:
                     # [Fix] 即使是 Placeholder 也強制設定字體大小為 32 並上移
                     try:
                         # 強制設定位置和大小，避免因為寬度太窄導致文字變成直式排列(換行)
-                        shapes.title.top = Inches(0.2)
+                        shapes.title.top = Inches(0.1)
                         shapes.title.left = Inches(0.5)
                         shapes.title.width = Inches(9.0)
-                        shapes.title.height = Inches(1.0)
+                        shapes.title.height = Inches(0.6)
                         
                         shapes.title.text_frame.word_wrap = True
                         
@@ -550,8 +549,8 @@ class FormatConverter:
                 else:
                     # 空白版面沒有標題 placeholder，創建標題 TextBox
                     print(f"[DEBUG] 空白版面，創建標題 TextBox")
-                    # [Fix] 上移標題位置 (0.3 -> 0.2)，調整字體大小為 32
-                    title_box = shapes.add_textbox(Inches(0.5), Inches(0.2), Inches(9), Inches(1.0))
+                    # [Fix] 上移標題位置 (0.2 -> 0.1)，調整字體大小為 32
+                    title_box = shapes.add_textbox(Inches(0.5), Inches(0.1), Inches(9.0), Inches(0.6))
                     title_box.text_frame.paragraphs[0].text = title_text
                     # 設定標題樣式
                     title_box.text_frame.paragraphs[0].font.size = Pt(32)
@@ -592,28 +591,64 @@ class FormatConverter:
                     if any('主要工作內容' in str(h) for h in headers):
                         is_work_report = True
                         # 工作報告表格：6個欄位 (項次, 專案名稱, 主要工作內容, 進度%, 預計完成日, 需求人)
-                        # 自訂寬度比例：項次 6%, 專案名稱 12%, 主要工作內容 55%, 進度% 6%, 預計完成日 12%, 需求人 8%
-                        column_widths = [0.06, 0.12, 0.55, 0.06, 0.12, 0.09]  # 總和 1.00
+                        # 自訂寬度比例更動，預計完成日改為 15%，避免折行
+                        column_widths = [0.05, 0.13, 0.52, 0.05, 0.15, 0.10]  # 總和 1.00
                         print(f"[INFO] 檢測到工作報告表格，使用自訂欄位寬度: {column_widths}")
+                    elif any('開發效率提升率' in str(h) for h in headers) or any('開發效率提昇率' in str(h) for h in headers):
+                        # AI運用表格：5個欄位 (說明, 預計時數, 實際時數, 開發效率提升率, 工時節省率)
+                        column_widths = [0.40, 0.15, 0.15, 0.15, 0.15]
+                        print(f"[INFO] 檢測到AI運用表格，使用自訂欄位寬度: {column_widths}")
+                    elif any('專案說明' in str(h) for h in headers):
+                        # 重點/年度專案表格：5個欄位 (專案名稱, 專案說明, 進度%, 預計完成日, 負責人)
+                        column_widths = [0.20, 0.50, 0.05, 0.15, 0.10]
+                        print(f"[INFO] 檢測到重點/年度專案表格，使用自訂欄位寬度: {column_widths}")
                     
                     # 工作報告表格自動分頁邏輯
                     if is_work_report and len(rows) > 0:
-                        MAX_ROWS_PER_PAGE = 8  # 每頁最多顯示 8 個專案（工作內容多時列高較高，超過即分頁）
+                        MAX_LINES_PER_PAGE = 17  # 依行數決定分頁 (降至17避免超出版面底部)
                         
-                        # 計算需要的頁數
-                        total_pages = (len(rows) + MAX_ROWS_PER_PAGE - 1) // MAX_ROWS_PER_PAGE
+                        # 尋找「主要工作內容」所在的欄位索引 (主要用來計算行數)
+                        content_col_idx = 2
+                        for i, h in enumerate(headers):
+                            if '主要工作內容' in str(h):
+                                content_col_idx = i
+                                break
+                        
+                        pages = []
+                        current_page = []
+                        current_lines = 0
+                        
+                        for row in rows:
+                            # 計算此專案包含的行數（以 <br> 為基準）
+                            if len(row) > content_col_idx:
+                                content = str(row[content_col_idx])
+                                # 計算 <br> 數量 + 1 即為行數
+                                lines_in_row = len(re.split(r'<br\s*/?>', content, flags=re.IGNORECASE))
+                            else:
+                                lines_in_row = 1
+                            
+                            # 如果加上這個專案會超過限制，且目前頁面已經有專案，則換頁
+                            if current_lines + lines_in_row > MAX_LINES_PER_PAGE and len(current_page) > 0:
+                                pages.append(current_page)
+                                current_page = [row]
+                                current_lines = lines_in_row
+                            else:
+                                current_page.append(row)
+                                current_lines += lines_in_row
+                                
+                        if current_page:
+                            pages.append(current_page)
+                            
+                        total_pages = len(pages)
                         
                         if total_pages > 1:
-                            print(f"[INFO] 工作報告表格包含 {len(rows)} 行，將分為 {total_pages} 頁")
+                            print(f"[INFO] 工作報告表格包含 {len(rows)} 個專案，依行數自動分為 {total_pages} 頁")
                         
                         # 保存原始標題
                         original_title = current_slide.shapes.title.text if current_slide.shapes.title else "本月工作報告"
                         
                         # 分頁處理
-                        for page_num in range(total_pages):
-                            start_idx = page_num * MAX_ROWS_PER_PAGE
-                            end_idx = min(start_idx + MAX_ROWS_PER_PAGE, len(rows))
-                            page_rows = rows[start_idx:end_idx]
+                        for page_num, page_rows in enumerate(pages):
                             
                             # 如果是第一頁，使用當前投影片；否則創建新投影片
                             if page_num == 0:
@@ -624,10 +659,10 @@ class FormatConverter:
                                     if shapes.title:
                                         shapes.title.text = title_text
                                         try:
-                                            shapes.title.top = Inches(0.2)
+                                            shapes.title.top = Inches(0.1)
                                             shapes.title.left = Inches(0.5)
                                             shapes.title.width = Inches(9.0)
-                                            shapes.title.height = Inches(1.0)
+                                            shapes.title.height = Inches(0.6)
                                             shapes.title.text_frame.word_wrap = True
                                             for paragraph in shapes.title.text_frame.paragraphs:
                                                 paragraph.font.size = Pt(32)
@@ -646,10 +681,10 @@ class FormatConverter:
                                     shapes.title.text = title_text
                                     # 套用標題樣式
                                     try:
-                                        shapes.title.top = Inches(0.2)
+                                        shapes.title.top = Inches(0.1)
                                         shapes.title.left = Inches(0.5)
                                         shapes.title.width = Inches(9.0)
-                                        shapes.title.height = Inches(1.0)
+                                        shapes.title.height = Inches(0.6)
                                         shapes.title.text_frame.word_wrap = True
                                         for paragraph in shapes.title.text_frame.paragraphs:
                                             paragraph.font.size = Pt(32)
